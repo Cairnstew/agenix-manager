@@ -1,25 +1,24 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
 
+from agenix_manager.config import KeyGroups, SecretDef
 from agenix_manager.manifest import (
     Manifest,
     ManifestError,
     ManifestSecretEntry,
     add_secret,
+    find_manifest_path,
     load_manifest,
     remove_secret,
     resolve_all,
     resolve_keys,
     resolve_secret_entry,
     save_manifest,
-    find_manifest_path,
 )
-from agenix_manager.config import KeyGroups, SecretDef
 
 
 class TestManifestSecretEntry:

@@ -3,6 +3,12 @@ let
   hostKey = common.genKeyPair "host";
   hostPubText = builtins.readFile "${hostKey}/key.pub";
   encryptedSecret = common.encrypt "test-secret" [ hostKey ] "hello-from-agenix";
+  manifestFile = pkgs.writeText "secrets-manifest.json" (builtins.toJSON {
+    version = 1;
+    secrets = [
+      { name = "test-secret"; scope = "systems"; }
+    ];
+  });
 in {
   name = "basic";
 
@@ -23,12 +29,9 @@ in {
     agenixManager = {
       enable = true;
       secretsPath = "/etc/secrets";
-      flakeRoot = "/etc/nixos";
+      manifestPath = "${manifestFile}";
       keys.systems = [ hostPubText ];
       identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
-      secrets = [
-        { name = "test-secret"; keys = "systems"; }
-      ];
     };
 
     system.stateVersion = config.system.nixos.release;

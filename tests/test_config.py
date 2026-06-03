@@ -5,8 +5,6 @@ from pathlib import Path
 
 import pytest
 
-import pytest
-
 from agenix_manager.config import (
     KeyGroups,
     NixConfig,

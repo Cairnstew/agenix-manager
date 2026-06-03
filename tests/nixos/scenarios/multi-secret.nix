@@ -8,6 +8,14 @@ let
   secret1 = common.encrypt "db-password" [ systemKey ] "s3cr3t-db";
   secret2 = common.encrypt "api-token" [ userKey ] "tok-abc123";
   secret3 = common.encrypt "master-key" [ systemKey userKey ] "master-key-value";
+  manifestFile = pkgs.writeText "secrets-manifest.json" (builtins.toJSON {
+    version = 1;
+    secrets = [
+      { name = "db-password";  scope = "systems"; }
+      { name = "api-token";    scope = "users"; }
+      { name = "master-key";   scope = [ systemPubText userPubText ]; }
+    ];
+  });
 in {
   name = "multi-secret";
 
@@ -34,7 +42,7 @@ in {
     agenixManager = {
       enable = true;
       secretsPath = "/etc/secrets";
-      flakeRoot = "/etc/nixos";
+      manifestPath = "${manifestFile}";
       keys = {
         systems = [ systemPubText ];
         users = [ userPubText ];
@@ -42,11 +50,6 @@ in {
       identities = [
         "/etc/ssh/ssh_host_ed25519_key"
         "/etc/agenix/user_key"
-      ];
-      secrets = [
-        { name = "db-password";  keys = "systems"; }
-        { name = "api-token";    keys = "users"; }
-        { name = "master-key";   keys = "all"; }
       ];
     };
 

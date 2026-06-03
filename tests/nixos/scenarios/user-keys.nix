@@ -8,6 +8,14 @@ let
   secret1 = common.encrypt "user-secret-1" [ user1Key ] "user-1-data";
   secret2 = common.encrypt "user-secret-2" [ user2Key ] "user-2-data";
   secret3 = common.encrypt "shared-secret" [ user1Key user2Key ] "both-users";
+  manifestFile = pkgs.writeText "secrets-manifest.json" (builtins.toJSON {
+    version = 1;
+    secrets = [
+      { name = "user-secret-1"; scope = "users"; }
+      { name = "user-secret-2"; scope = "users"; }
+      { name = "shared-secret";  scope = "users"; }
+    ];
+  });
 in {
   name = "user-keys";
 
@@ -34,16 +42,11 @@ in {
     agenixManager = {
       enable = true;
       secretsPath = "/etc/secrets";
-      flakeRoot = "/etc/nixos";
+      manifestPath = "${manifestFile}";
       keys.users = [ user1PubText user2PubText ];
       identities = [
         "/etc/agenix/user1_key"
         "/etc/agenix/user2_key"
-      ];
-      secrets = [
-        { name = "user-secret-1"; keys = "users"; }
-        { name = "user-secret-2"; keys = "users"; }
-        { name = "shared-secret";  keys = "users"; }
       ];
     };
 

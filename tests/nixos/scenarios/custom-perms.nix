@@ -3,6 +3,18 @@ let
   hostKey = common.genKeyPair "host";
   hostPubText = builtins.readFile "${hostKey}/key.pub";
   encryptedSecret = common.encrypt "test-secret" [ hostKey ] "custom-perms-secret";
+  manifestFile = pkgs.writeText "secrets-manifest.json" (builtins.toJSON {
+    version = 1;
+    secrets = [
+      {
+        name = "test-secret";
+        scope = "systems";
+        owner = "nobody";
+        group = "nogroup";
+        mode = "0440";
+      }
+    ];
+  });
 in {
   name = "custom-perms";
 
@@ -23,18 +35,9 @@ in {
     agenixManager = {
       enable = true;
       secretsPath = "/etc/secrets";
-      flakeRoot = "/etc/nixos";
+      manifestPath = "${manifestFile}";
       keys.systems = [ hostPubText ];
       identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
-      secrets = [
-        {
-          name = "test-secret";
-          keys = "systems";
-          owner = "nobody";
-          group = "nogroup";
-          mode = "0440";
-        }
-      ];
     };
 
     system.stateVersion = config.system.nixos.release;

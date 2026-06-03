@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any
 
 from textual.app import ComposeResult
@@ -6,13 +5,13 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, ListItem, ListView, Static
 
 from ...config import NixConfig
+from ...manifest import find_manifest_path
 from .decrypt import DecryptScreen
 from .encrypt import EncryptScreen
 from .new_secret import NewSecretScreen
 from .rekey import RekeyScreen
 from .remove import RemoveScreen
 from .status import StatusScreen
-from ...manifest import find_manifest_path
 
 
 class MainMenuScreen(Screen[None]):

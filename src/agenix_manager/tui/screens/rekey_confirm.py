@@ -7,7 +7,7 @@ from typing import Any
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import ModalScreen
-from textual.widgets import Footer, Label, Static
+from textual.widgets import Label, Static
 
 from ...config import NixConfig, SecretDef
 
@@ -32,7 +32,6 @@ def _render_diff(current: list[str], new: list[str]) -> str:
     new_set = set(new)
     added = new_set - current_set
     removed = current_set - new_set
-    unchanged = current_set & new_set
 
     lines = []
     if not current:
