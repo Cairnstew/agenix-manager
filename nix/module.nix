@@ -43,6 +43,22 @@ let
     all     = cfg.keys.systems ++ cfg.keys.users ++ cfg.keys.other;
   };
 
+  agenixManagerPackage = pkgs.python3Packages.buildPythonPackage {
+    pname = "agenix-manager";
+    version = "0.1.0";
+    src = ../.;
+    pyproject = true;
+    build-system = [ pkgs.python3Packages.hatchling ];
+    dependencies = with pkgs.python3Packages; [
+      click
+      textual
+      rich
+      pydantic
+    ];
+    doCheck = false;
+    meta.description = "NixOS module + TUI CLI for declarative agenix secret management";
+  };
+
 in {
   options.agenixManager = {
 
@@ -116,22 +132,9 @@ in {
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.agenix-manager or (builtins.throw ''
-        agenixManager: `package` is not set and `pkgs.agenix-manager` is not available.
-        Apply the agenix-manager overlay or set `agenixManager.package` explicitly:
-
-          nixpkgs.overlays = [ inputs.agenix-manager.overlays.default ];
-
-        Or use a specific package:
-
-          agenixManager.package = pkgs.callPackage ./path/to/package.nix {};
-      '');
-      defaultText = lib.literalMD "`pkgs.agenix-manager`";
-      description = ''
-        The agenix-manager package to add to system packages.
-        Requires the agenix-manager overlay to be applied, or set
-        explicitly to any package providing the agenix-manager CLI.
-      '';
+      default = agenixManagerPackage;
+      defaultText = lib.literalMD "Built from source";
+      description = "The agenix-manager package to install.";
     };
 
     cliConfig = lib.mkOption {

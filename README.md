@@ -19,10 +19,7 @@ eval time and wires up `config.age.secrets.*` automatically.
       modules = [
         agenix.nixosModules.default
         agenix-manager.nixosModules.default
-        ({ pkgs, ... }: {
-          # Required: makes pkgs.agenix-manager available for the module
-          nixpkgs.overlays = [ agenix-manager.overlays.default ];
-
+        {
           agenixManager = {
             enable      = true;
             secretsPath = ./secrets;
@@ -35,16 +32,15 @@ eval time and wires up `config.age.secrets.*` automatically.
 
             identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
           };
-        })
+        }
       ];
     };
   };
 }
 ```
 
-The `nixpkgs.overlays` line makes `pkgs.agenix-manager` available so the module
-can add it to `environment.systemPackages` automatically. Without it, set
-`agenixManager.package` explicitly to any package providing the CLI.
+The CLI is automatically added to `environment.systemPackages` — no overlay or
+extra config needed. Just import the module and enable.
 
 Secrets are **not** declared in Nix — they live in the manifest. After adding
 your first secret (see CLI section below), reference them from other modules
