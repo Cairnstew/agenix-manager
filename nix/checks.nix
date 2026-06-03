@@ -3,6 +3,21 @@
 let
   pkg = pythonSet."agenix-manager";
 
+  stubOptions = {
+    age.secrets = lib.mkOption { type = lib.types.attrsOf lib.types.raw; default = {}; };
+    age.identityPaths = lib.mkOption { type = lib.types.listOf lib.types.str; default = []; };
+    environment.systemPackages = lib.mkOption { type = lib.types.listOf lib.types.package; default = []; };
+    system.activationScripts = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.submodule {
+        options = {
+          text = lib.mkOption { type = lib.types.lines; };
+          deps = lib.mkOption { type = lib.types.listOf lib.types.str; default = []; };
+        };
+      });
+      default = {};
+    };
+  };
+
   testManifest = pkgs.writeText "secrets-manifest.json" (builtins.toJSON {
     version = 1;
     secrets = [
@@ -13,21 +28,7 @@ let
 
   evalTest = lib.evalModules {
     modules = [
-      ({ lib, ... }: {
-        options = {
-          age.secrets = lib.mkOption { type = lib.types.attrsOf lib.types.raw; default = {}; };
-          age.identityPaths = lib.mkOption { type = lib.types.listOf lib.types.str; default = []; };
-          system.activationScripts = lib.mkOption {
-            type = lib.types.attrsOf (lib.types.submodule {
-              options = {
-                text = lib.mkOption { type = lib.types.lines; };
-                deps = lib.mkOption { type = lib.types.listOf lib.types.str; default = []; };
-              };
-            });
-            default = {};
-          };
-        };
-      })
+      ({ lib, ... }: { options = stubOptions; })
       { imports = [ module ]; }
       {
         agenixManager = {
@@ -37,6 +38,7 @@ let
           keys.systems = [ "ssh-ed25519 AAAA...testkey" ];
           keys.users = [ "ssh-ed25519 AAAA...userkey" ];
           identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
+          package = pkg;
         };
       }
     ];
@@ -76,21 +78,7 @@ let
   missingManifestTest = let
     evalMissing = lib.evalModules {
       modules = [
-        ({ lib, ... }: {
-          options = {
-            age.secrets = lib.mkOption { type = lib.types.attrsOf lib.types.raw; default = {}; };
-            age.identityPaths = lib.mkOption { type = lib.types.listOf lib.types.str; default = []; };
-            system.activationScripts = lib.mkOption {
-              type = lib.types.attrsOf (lib.types.submodule {
-                options = {
-                  text = lib.mkOption { type = lib.types.lines; };
-                  deps = lib.mkOption { type = lib.types.listOf lib.types.str; default = []; };
-                };
-              });
-              default = {};
-            };
-          };
-        })
+        ({ lib, ... }: { options = stubOptions; })
         { imports = [ module ]; }
         {
           agenixManager = {
@@ -99,6 +87,7 @@ let
             secretsPath = "/test/secrets";
             keys.systems = [ "ssh-ed25519 AAAA...testkey" ];
             identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
+            package = pkg;
           };
         }
       ];

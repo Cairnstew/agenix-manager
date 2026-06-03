@@ -4,7 +4,7 @@ let
 in
 lib.evalModules {
   modules = [
-    (import ./stub-options.nix { inherit lib; })
+    (import ./stub-options.nix { inherit lib pkgs; })
     ({ config, lib, pkgs, ... }: {
       imports = [ ../../nix/module.nix ];
       agenixManager = {

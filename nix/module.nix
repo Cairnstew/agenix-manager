@@ -114,6 +114,26 @@ in {
       '';
     };
 
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.agenix-manager or (builtins.throw ''
+        agenixManager: `package` is not set and `pkgs.agenix-manager` is not available.
+        Apply the agenix-manager overlay or set `agenixManager.package` explicitly:
+
+          nixpkgs.overlays = [ inputs.agenix-manager.overlays.default ];
+
+        Or use a specific package:
+
+          agenixManager.package = pkgs.callPackage ./path/to/package.nix {};
+      '');
+      defaultText = lib.literalMD "`pkgs.agenix-manager`";
+      description = ''
+        The agenix-manager package to add to system packages.
+        Requires the agenix-manager overlay to be applied, or set
+        explicitly to any package providing the agenix-manager CLI.
+      '';
+    };
+
     cliConfig = lib.mkOption {
       internal = true;
       readOnly = true;
@@ -140,6 +160,8 @@ in {
     }) _manifestSecrets);
 
     age.identityPaths = cfg.identities;
+
+    environment.systemPackages = [ cfg.package ];
 
     agenixManager.secretsNixContent = let
       renderKeyList = keys:
