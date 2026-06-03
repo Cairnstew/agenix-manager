@@ -2,7 +2,7 @@ name: VM Test
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -12,16 +12,13 @@ on:
         default: 15
         type: number
 
-env:
-  SCENARIOS: '["basic", "multi-secret", "custom-perms", "user-keys"]'
-
 jobs:
   vm-test:
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ inputs.timeout-minutes || 15 }}
+    timeout-minutes: 15
     strategy:
       matrix:
-        test: ${{ fromJSON(env.SCENARIOS) }}
+        test: [basic, multi-secret, custom-perms, user-keys]
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
