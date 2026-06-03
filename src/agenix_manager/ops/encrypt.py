@@ -25,10 +25,9 @@ def _find_agenix(cfg: NixConfig) -> str:
 
 def encrypt_secret(cfg: NixConfig, secret: SecretDef) -> None:
     agenix_bin = _find_agenix(cfg)
-    rules = str(Path(cfg.secrets_path) / "secrets.nix")
     try:
         subprocess.run(
-            [agenix_bin, "-e", f"{secret.name}.age", "-r", rules],
+            [agenix_bin, "-e", f"{secret.name}.age"],
             cwd=cfg.secrets_path,
             check=True,
         )
