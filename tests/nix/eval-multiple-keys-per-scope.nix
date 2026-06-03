@@ -1,6 +1,7 @@
 let
   pkgs = import <nixpkgs> {};
   lib = pkgs.lib;
+  manifestPath = toString ./. + "/eval-multiple-keys-per-scope-manifest.json";
 in
 lib.evalModules {
   modules = [
@@ -10,6 +11,7 @@ lib.evalModules {
       agenixManager = {
         enable = true;
         secretsPath = "/secrets";
+        manifestPath = manifestPath;
         keys.systems = [
           "ssh-ed25519 AAAA...s1"
           "ssh-ed25519 AAAA...s2"
@@ -21,12 +23,6 @@ lib.evalModules {
         ];
         keys.other = [ "ssh-ed25519 AAAA...o1" ];
         identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
-        secrets = [
-          { name = "host-key"; keys = "systems"; }
-          { name = "user-key"; keys = "users"; }
-          { name = "ci-key";   keys = "other"; }
-          { name = "all-key";  keys = "all"; }
-        ];
       };
     })
   ];

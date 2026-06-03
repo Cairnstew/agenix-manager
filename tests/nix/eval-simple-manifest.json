@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "secrets": [
+    {
+      "name": "t1",
+      "scope": "systems"
+    }
+  ]
+}

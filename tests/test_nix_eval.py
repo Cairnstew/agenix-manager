@@ -122,22 +122,6 @@ class TestNixEvalFull:
         assert data["secretsPath"] == "/var/secrets"
 
 
-class TestNixEvalAppendedSecrets:
-    def test_secrets_append_not_overwrite(self):
-        data = nix_eval("eval-appended-secrets.nix")
-        assert len(data["secrets"]) == 2
-        names = {s["name"] for s in data["secrets"]}
-        assert names == {"from-first", "from-second"}
-
-    def test_appended_secrets_keep_individual_keys(self):
-        data = nix_eval("eval-appended-secrets.nix")
-        by_name = {s["name"]: s for s in data["secrets"]}
-        assert by_name["from-first"]["keys"] == ["ssh-ed25519 AAAA...u"]
-        assert by_name["from-first"]["scope"] == "users"
-        assert by_name["from-second"]["keys"] == ["ssh-ed25519 AAAA...s"]
-        assert by_name["from-second"]["scope"] == "systems"
-
-
 class TestNixEvalMultipleKeys:
     def test_system_key_count(self):
         data = nix_eval("eval-multiple-keys-per-scope.nix")
@@ -189,6 +173,23 @@ class TestNixEvalMultipleKeys:
         cfg = NixConfig.model_validate(data)
         assert len(cfg.keys.systems) == 3
         assert len(cfg.secrets) == 4
+
+
+class TestNixEvalMissingManifest:
+    def test_missing_manifest_returns_empty_secrets(self):
+        data = nix_eval("eval-missing-manifest.nix")
+        assert data["secrets"] == []
+
+    def test_missing_manifest_cli_config_structure(self):
+        data = nix_eval("eval-missing-manifest.nix")
+        assert set(data.keys()) == {
+            "secretsPath",
+            "secretsNixPath",
+            "keysSnapshotPath",
+            "identities",
+            "keys",
+            "secrets",
+        }
 
 
 class TestNixEvalErrors:

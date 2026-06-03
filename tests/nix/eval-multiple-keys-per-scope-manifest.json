@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "secrets": [
+    {
+      "name": "host-key",
+      "scope": "systems"
+    },
+    {
+      "name": "user-key",
+      "scope": "users"
+    },
+    {
+      "name": "ci-key",
+      "scope": "other"
+    },
+    {
+      "name": "all-key",
+      "scope": "all"
+    }
+  ]
+}

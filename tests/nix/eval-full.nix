@@ -1,6 +1,7 @@
 let
   pkgs = import <nixpkgs> {};
   lib = pkgs.lib;
+  manifestPath = toString ./. + "/eval-full-manifest.json";
 in
 lib.evalModules {
   modules = [
@@ -10,18 +11,13 @@ lib.evalModules {
       agenixManager = {
         enable = true;
         secretsPath = "/var/secrets";
+        manifestPath = manifestPath;
         keys.systems = [ "ssh-ed25519 AAAA...s" ];
         keys.users   = [ "ssh-ed25519 AAAA...u" ];
         keys.other   = [ "ssh-ed25519 AAAA...o" ];
         identities = [
           "/etc/ssh/ssh_host_ed25519_key"
           "/home/user/.ssh/id_ed25519"
-        ];
-        secrets = [
-          { name = "sys-key"; keys = "systems"; owner = "root";   group = "root";   mode = "0400"; }
-          { name = "user-token"; keys = "users";   owner = "alice"; group = "users";  mode = "0600"; }
-          { name = "ci-secret";  keys = "other";   owner = "root";  group = "root";   mode = "0400"; }
-          { name = "global-db";  keys = "all";     owner = "postgres"; group = "postgres"; mode = "0600"; }
         ];
       };
     })

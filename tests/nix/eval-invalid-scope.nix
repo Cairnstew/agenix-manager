@@ -1,6 +1,7 @@
 let
   pkgs = import <nixpkgs> {};
   lib = pkgs.lib;
+  manifestPath = toString ./. + "/eval-invalid-scope-manifest.json";
 in
 lib.evalModules {
   modules = [
@@ -10,8 +11,8 @@ lib.evalModules {
       agenixManager = {
         enable = true;
         secretsPath = "/secrets";
+        manifestPath = manifestPath;
         keys.users = [ "ssh-ed25519 AAAA...u" ];
-        secrets = [{ name = "bad"; keys = "nonexistent_scope"; }];
       };
     })
   ];

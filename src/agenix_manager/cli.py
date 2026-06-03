@@ -1,14 +1,38 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import click
 
 from .config import load_from_cache, load_from_file, load_from_nix_eval
+from .manifest import (
+    ManifestError,
+    add_secret,
+    find_manifest_path,
+    load_manifest,
+    resolve_all,
+    save_manifest,
+)
+from .ops.encrypt import encrypt_secret, encrypt_secret_from_stdin
 from .ops.errors import AgenixOpError
 from .ops.remove import find_orphaned_secrets
 from .secrets_nix import write_secrets_nix
 from .state import compute_state
+
+
+def _populate_from_manifest(cfg):
+    manifest_path = find_manifest_path(cfg.secrets_path)
+    if not manifest_path.exists():
+        return cfg, None
+    try:
+        manifest = load_manifest(manifest_path)
+        resolved = resolve_all(manifest, cfg.keys, cfg.secrets_path)
+        if resolved:
+            cfg = cfg.model_copy(update={"secrets": resolved})
+        return cfg, manifest
+    except ManifestError:
+        return cfg, None
 
 
 @click.group(invoke_without_command=True)
@@ -61,6 +85,8 @@ def main(
             update={"identities": cfg.identities + list(extra_identities)}
         )
 
+    cfg, _manifest = _populate_from_manifest(cfg)
+
     try:
         written = write_secrets_nix(cfg)
     except OSError as e:
@@ -70,6 +96,8 @@ def main(
 
     ctx.ensure_object(dict)
     ctx.obj["cfg"] = cfg
+    if _manifest is not None:
+        ctx.obj["manifest"] = _manifest
 
     if ctx.invoked_subcommand is None:
         from .tui.app import AgenixManagerApp
@@ -145,3 +173,108 @@ def prune(ctx: click.Context, force: bool) -> None:
     for f in orphans:
         f.unlink()
         click.echo(f"[agenix-manager] Deleted {f}")
+
+
+@main.command()
+@click.option("--name", default=None, help="Secret name")
+@click.option("--scope", default=None, help="Key scope (e.g. users, systems, all)")
+@click.option("--owner", default="root", help="File owner")
+@click.option("--group", default="root", help="File group")
+@click.option("--mode", default="0400", help="File mode (octal)")
+@click.option("--stdin", is_flag=True, help="Read secret value from stdin instead of editor")
+@click.pass_context
+def new(
+    ctx: click.Context,
+    name: str | None,
+    scope: str | None,
+    owner: str,
+    group: str,
+    mode: str,
+    stdin: bool,
+) -> None:
+    """Create a new secret."""
+    cfg = ctx.obj["cfg"]
+    manifest_path = find_manifest_path(cfg.secrets_path)
+
+    if name is not None and scope is not None:
+        _new_noninteractive(ctx, cfg, manifest_path, name, scope, owner, group, mode, stdin)
+        return
+
+    if sys.stdin.isatty():
+        _new_tui(ctx, cfg, manifest_path)
+    else:
+        click.echo(
+            "[agenix-manager] Piped input detected but --name and --scope are required.\n"
+            "Usage: echo 'mysecret' | agenix-manager new --name mysecret --scope users",
+            err=True,
+        )
+        raise click.Abort
+
+
+def _new_noninteractive(
+    ctx: click.Context,
+    cfg,
+    manifest_path: Path,
+    name: str,
+    scope: str,
+    owner: str,
+    group: str,
+    mode: str,
+    stdin: bool,
+) -> None:
+    from .manifest import Manifest
+
+    try:
+        manifest = load_manifest(manifest_path)
+    except ManifestError:
+        manifest = Manifest(version=1, secrets=[])
+
+    if any(s.name == name for s in manifest.secrets):
+        click.echo(f"[agenix-manager] Error: Secret '{name}' already exists in manifest", err=True)
+        raise click.Abort
+
+    available_scopes = ["all", "systems", "users", "other"]
+    extra = (cfg.keys.model_extra or {}) if hasattr(cfg.keys, "model_extra") else {}
+    available_scopes.extend(extra.keys())
+    if scope not in available_scopes:
+        click.echo(
+            f"[agenix-manager] Error: Unknown key scope '{scope}'. "
+            f"Available scopes: {', '.join(available_scopes)}",
+            err=True,
+        )
+        raise click.Abort
+
+    manifest = add_secret(manifest, name=name, scope=scope, owner=owner, group=group, mode=mode)
+    save_manifest(manifest_path, manifest)
+
+    resolved = resolve_all(manifest, cfg.keys, cfg.secrets_path)
+    updated_cfg = cfg.model_copy(update={"secrets": resolved})
+    write_secrets_nix(updated_cfg)
+
+    secret = next(s for s in resolved if s.name == name)
+
+    if stdin:
+        plaintext = sys.stdin.read()
+        encrypt_secret_from_stdin(cfg, secret, plaintext)
+    else:
+        encrypt_secret(updated_cfg, secret)
+
+    click.echo(f"[agenix-manager] Secret '{name}' created.")
+    click.echo(f"[agenix-manager]   Manifest: {manifest_path}")
+    click.echo(f"[agenix-manager]   .age file: {secret.file}")
+    click.echo(f"[agenix-manager]   Reference: config.age.secrets.{name}.path")
+    click.echo(
+        f"[agenix-manager] Remember to run: git add {manifest_path} {cfg.secrets_path}/{name}.age"
+    )
+
+
+def _new_tui(ctx: click.Context, cfg, manifest_path: Path) -> None:
+    from .tui.app import AgenixManagerApp
+    from .tui.screens.new_secret import NewSecretScreen
+
+    app = AgenixManagerApp(
+        cfg=cfg,
+        initial_screen=NewSecretScreen,
+        initial_screen_kwargs={"manifest_path": manifest_path},
+    )
+    app.run()

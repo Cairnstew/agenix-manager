@@ -35,6 +35,36 @@ Never set `agenixManager.keys.all` directly; it is computed as
 `systems ++ users ++ other`. Setting it has no effect and will be silently
 ignored.
 
+## Secrets manifest
+
+### Manifest must be git-tracked
+Nix flakes only see files in the git working tree. After creating or updating
+`secrets-manifest.json`, run `git add secrets/secrets-manifest.json` before
+`nixos-rebuild switch`. The `agenix-manager new` subcommand prints a reminder.
+
+### Manifest path must be accessible to the Nix evaluator
+`builtins.readFile` requires the manifest path to be in the Nix store or a
+string path accessible to the evaluator. With flakes, `./secrets/secrets-manifest.json`
+works naturally because it's in the flake source tree. If `secretsPath` is set to
+an absolute runtime path outside the flake, `builtins.readFile` will fail. Use
+`--impure` in such cases, or keep `secretsPath` relative to the flake root.
+
+### Manifest is safe to commit
+The manifest contains only metadata (secret names, key scopes, file permissions),
+never plaintext secret values. It is safe to commit to a public repository.
+
+### Atomic manifest writes
+The manifest is written atomically (write to `.tmp`, then `os.replace`) to
+avoid corruption if the process is killed mid-write. A corrupt manifest makes
+all secrets inaccessible at the next `nixos-rebuild switch`. Never edit the
+manifest file by hand while the CLI is running.
+
+### age output format (stdin path)
+`agenix -e` produces ASCII-armored `.age` files (`age -e -a`). The CLI's stdin
+encryption path (`--stdin`) uses the same flags (`age -e -a`) to produce
+compatible output. Agenix can read both ASCII-armored and binary `.age` files,
+so mismatched formats are not a concern.
+
 ## uv2nix
 
 ### uv.lock required for evaluation

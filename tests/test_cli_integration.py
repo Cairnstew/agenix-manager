@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import unittest
 from pathlib import Path
 
 import pytest
@@ -187,3 +188,150 @@ class TestCliPrune:
         assert result.exit_code == 0
         assert "Deleted" in result.output
         assert not (secrets_dir / "orphan.age").exists()
+
+
+class TestCliNew:
+    @pytest.fixture
+    def new_config(self, tmp_path: Path) -> dict:
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir(parents=True, exist_ok=True)
+        return {
+            "secrets_path": str(secrets_dir),
+            "secrets_nix_path": str(secrets_dir / "secrets.nix"),
+            "identities": ["/etc/ssh/ssh_host_ed25519_key"],
+            "keys": {
+                "systems": ["ssh-ed25519 AAAA...s"],
+                "users": ["ssh-ed25519 AAAA...u"],
+                "other": [],
+                "all": ["ssh-ed25519 AAAA...s", "ssh-ed25519 AAAA...u"],
+            },
+            "secrets": [],
+        }
+
+    def test_new_requires_name_and_scope_when_piped(self, runner: CliRunner, tmp_path: Path):
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir()
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({
+            "secrets_path": str(secrets_dir),
+            "identities": [],
+            "keys": {"systems": ["k"], "users": [], "other": [], "all": ["k"]},
+            "secrets": [],
+        }))
+        result = runner.invoke(
+            main, ["--config-file", str(config_file), "new"],
+            input="myvalue",
+        )
+        assert result.exit_code != 0
+        assert "--name" in result.output or "required" in result.output
+
+    def test_new_stdin_creates_manifest_and_secrets_nix(self, runner: CliRunner, tmp_path: Path):
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir(parents=True, exist_ok=True)
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({
+            "secrets_path": str(secrets_dir),
+            "identities": ["/etc/ssh/ssh_host_ed25519_key"],
+            "keys": {
+                "systems": ["ssh-ed25519 AAAA...s"],
+                "users": ["ssh-ed25519 AAAA...u"],
+                "other": [],
+                "all": ["ssh-ed25519 AAAA...s", "ssh-ed25519 AAAA...u"],
+            },
+            "secrets": [],
+        }))
+
+        with unittest.mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value.stdout = ""
+            result = runner.invoke(
+                main, [
+                    "--config-file", str(config_file),
+                    "new", "--name", "github-token", "--scope", "users",
+                    "--stdin",
+                ],
+                input="mysecretvalue",
+            )
+        assert result.exit_code == 0, f"CLI failed: {result.output} {result.exception}"
+        assert "Secret 'github-token' created" in result.output
+        manifest_path = secrets_dir / "secrets-manifest.json"
+        assert manifest_path.exists()
+        manifest_data = json.loads(manifest_path.read_text())
+        assert manifest_data["version"] == 1
+        assert manifest_data["secrets"][0]["name"] == "github-token"
+        secrets_nix = secrets_dir / "secrets.nix"
+        assert secrets_nix.exists()
+        assert "github-token.age" in secrets_nix.read_text()
+
+    def test_new_stdin_encrypts_with_age(self, runner: CliRunner, tmp_path: Path):
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir(parents=True, exist_ok=True)
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({
+            "secrets_path": str(secrets_dir),
+            "identities": [],
+            "keys": {"systems": ["k"], "users": ["u"], "other": [], "all": ["k", "u"]},
+            "secrets": [],
+        }))
+
+        with unittest.mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value.stdout = ""
+            runner.invoke(
+                main, [
+                    "--config-file", str(config_file),
+                    "new", "--name", "test", "--scope", "users", "--stdin",
+                ],
+                input="data",
+            )
+        assert mock_run.called
+        cmd = mock_run.call_args[0][0]
+        assert cmd[0] == "age"
+        assert "-r" in cmd
+        assert "u" in cmd
+
+    def test_new_duplicate_name_rejected(self, runner: CliRunner, tmp_path: Path):
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir(parents=True, exist_ok=True)
+        manifest_path = secrets_dir / "secrets-manifest.json"
+        manifest_path.write_text(json.dumps({
+            "version": 1,
+            "secrets": [{"name": "existing", "scope": "users"}],
+        }))
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({
+            "secrets_path": str(secrets_dir),
+            "identities": [],
+            "keys": {"systems": ["k"], "users": ["u"], "other": [], "all": ["k", "u"]},
+            "secrets": [{"name": "existing", "keys": ["k"], "scope": "users", "file": f"{secrets_dir}/existing.age"}],
+        }))
+
+        with unittest.mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value.stdout = ""
+            result = runner.invoke(
+                main, [
+                    "--config-file", str(config_file),
+                    "new", "--name", "existing", "--scope", "users", "--stdin",
+                ],
+                input="data",
+            )
+        assert result.exit_code != 0
+        assert "already exists" in result.output
+
+    def test_new_invalid_scope_rejected(self, runner: CliRunner, tmp_path: Path):
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir(parents=True, exist_ok=True)
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({
+            "secrets_path": str(secrets_dir),
+            "identities": [],
+            "keys": {"systems": [], "users": [], "other": [], "all": []},
+            "secrets": [],
+        }))
+        result = runner.invoke(
+            main, [
+                "--config-file", str(config_file),
+                "new", "--name", "bad", "--scope", "nonexistent", "--stdin",
+            ],
+            input="data",
+        )
+        assert result.exit_code != 0
+        assert "Unknown key scope" in result.output

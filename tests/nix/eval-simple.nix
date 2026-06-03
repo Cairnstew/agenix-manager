@@ -1,6 +1,7 @@
 let
   pkgs = import <nixpkgs> {};
   lib = pkgs.lib;
+  manifestPath = toString ./. + "/eval-simple-manifest.json";
 in
 lib.evalModules {
   modules = [
@@ -10,9 +11,9 @@ lib.evalModules {
       agenixManager = {
         enable = true;
         secretsPath = "/secrets";
+        manifestPath = manifestPath;
         keys.systems = [ "ssh-ed25519 AAAA...test" ];
         identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
-        secrets = [{ name = "t1"; keys = "systems"; }];
       };
     })
   ];

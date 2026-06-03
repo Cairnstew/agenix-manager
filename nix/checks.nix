@@ -3,6 +3,14 @@
 let
   pkg = pythonSet."agenix-manager";
 
+  testManifest = pkgs.writeText "secrets-manifest.json" (builtins.toJSON {
+    version = 1;
+    secrets = [
+      { name = "t1"; scope = "systems"; }
+      { name = "t2"; scope = "all"; owner = "postgres"; group = "postgres"; }
+    ];
+  });
+
   evalTest = lib.evalModules {
     modules = [
       ({ lib, ... }: {
@@ -24,14 +32,11 @@ let
       {
         agenixManager = {
           enable = true;
+          manifestPath = "${testManifest}";
           secretsPath = "/test/secrets";
           keys.systems = [ "ssh-ed25519 AAAA...testkey" ];
           keys.users = [ "ssh-ed25519 AAAA...userkey" ];
           identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
-          secrets = [
-            { name = "t1"; keys = "systems"; }
-            { name = "t2"; keys = "all"; owner = "postgres"; group = "postgres"; }
-          ];
         };
       }
     ];
@@ -67,9 +72,51 @@ let
     }
     touch "$out"
   '';
-in
-{
 
+  missingManifestTest = let
+    evalMissing = lib.evalModules {
+      modules = [
+        ({ lib, ... }: {
+          options = {
+            age.secrets = lib.mkOption { type = lib.types.attrsOf lib.types.raw; default = {}; };
+            age.identityPaths = lib.mkOption { type = lib.types.listOf lib.types.str; default = []; };
+            system.activationScripts = lib.mkOption {
+              type = lib.types.attrsOf (lib.types.submodule {
+                options = {
+                  text = lib.mkOption { type = lib.types.lines; };
+                  deps = lib.mkOption { type = lib.types.listOf lib.types.str; default = []; };
+                };
+              });
+              default = {};
+            };
+          };
+        })
+        { imports = [ module ]; }
+        {
+          agenixManager = {
+            enable = true;
+            manifestPath = "/nonexistent/manifest.json";
+            secretsPath = "/test/secrets";
+            keys.systems = [ "ssh-ed25519 AAAA...testkey" ];
+            identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
+          };
+        }
+      ];
+      specialArgs = { inherit pkgs; };
+    };
+  in
+    pkgs.runCommand "missing-manifest-test" {} ''
+      secrets=${
+        lib.escapeShellArg (builtins.toJSON evalMissing.config.agenixManager.cliConfig.secrets)
+      }
+      if [ "$secrets" != "[]" ]; then
+        echo "FAIL: expected empty secrets list when manifest is missing, got: $secrets"
+        exit 1
+      fi
+      touch "$out"
+    '';
+
+in {
   build = pkg;
 
   venv = pythonSet.mkVirtualEnv "app-env" { agenix-manager = [ ]; };
@@ -78,4 +125,5 @@ in
 
   secrets-nix-drift = secretsNixDriftTest;
 
+  missing-manifest = missingManifestTest;
 }

@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 
 from textual.app import ComposeResult
@@ -7,9 +8,11 @@ from textual.widgets import Footer, Header, ListItem, ListView, Static
 from ...config import NixConfig
 from .decrypt import DecryptScreen
 from .encrypt import EncryptScreen
+from .new_secret import NewSecretScreen
 from .rekey import RekeyScreen
 from .remove import RemoveScreen
 from .status import StatusScreen
+from ...manifest import find_manifest_path
 
 
 class MainMenuScreen(Screen[None]):
@@ -21,7 +24,8 @@ class MainMenuScreen(Screen[None]):
         yield Header()
         yield ListView(
             ListItem(Static("Status - View secret status"), id="status"),
-            ListItem(Static("Encrypt - Edit/create a secret"), id="encrypt"),
+            ListItem(Static("New secret - Create a new secret"), id="new-secret"),
+            ListItem(Static("Encrypt - Edit/re-encrypt a secret"), id="encrypt"),
             ListItem(Static("Decrypt - View a secret"), id="decrypt"),
             ListItem(Static("Rekey - Re-encrypt secrets"), id="rekey"),
             ListItem(Static("Remove - Delete a secret's .age file"), id="remove"),
@@ -32,7 +36,12 @@ class MainMenuScreen(Screen[None]):
         item_id = event.item.id
         if item_id is None:
             return
-        screens: dict[str, type[Screen[None]]] = {
+        if item_id == "new-secret":
+            manifest_path = find_manifest_path(self.cfg.secrets_path)
+            screen = NewSecretScreen(cfg=self.cfg, manifest_path=manifest_path)
+            self.app.push_screen(screen)
+            return
+        screens: dict[str, type[Screen[Any]]] = {
             "status": StatusScreen,
             "encrypt": EncryptScreen,
             "decrypt": DecryptScreen,

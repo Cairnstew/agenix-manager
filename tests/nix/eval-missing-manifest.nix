@@ -10,12 +10,11 @@ lib.evalModules {
       agenixManager = {
         enable = true;
         secretsPath = "/secrets";
-        keys.users   = [ "ssh-ed25519 AAAA...u" ];
-        keys.systems = [ "ssh-ed25519 AAAA...s" ];
+        manifestPath = "/nonexistent/manifest.json";
+        keys.systems = [ "ssh-ed25519 AAAA...test" ];
+        identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
       };
     })
-    { agenixManager.secrets = [{ name = "from-first"; keys = "users"; }]; }
-    { agenixManager.secrets = [{ name = "from-second"; keys = "systems"; }]; }
   ];
   specialArgs = { inherit pkgs; };
 }

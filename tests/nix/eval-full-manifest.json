@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "secrets": [
+    {
+      "name": "sys-key",
+      "scope": "systems",
+      "owner": "root",
+      "group": "root",
+      "mode": "0400"
+    },
+    {
+      "name": "user-token",
+      "scope": "users",
+      "owner": "alice",
+      "group": "users",
+      "mode": "0600"
+    },
+    {
+      "name": "ci-secret",
+      "scope": "other",
+      "owner": "root",
+      "group": "root",
+      "mode": "0400"
+    },
+    {
+      "name": "global-db",
+      "scope": "all",
+      "owner": "postgres",
+      "group": "postgres",
+      "mode": "0600"
+    }
+  ]
+}

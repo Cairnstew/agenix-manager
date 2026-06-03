@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "secrets": [
+    {
+      "name": "t1",
+      "scope": "systems",
+      "owner": "root",
+      "group": "root",
+      "mode": "0400"
+    },
+    {
+      "name": "t2",
+      "scope": "all",
+      "owner": "postgres",
+      "group": "postgres",
+      "mode": "0600"
+    }
+  ]
+}

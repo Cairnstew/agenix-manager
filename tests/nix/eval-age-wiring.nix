@@ -1,6 +1,7 @@
 let
   pkgs = import <nixpkgs> {};
   lib = pkgs.lib;
+  manifestPath = toString ./. + "/eval-age-wiring-manifest.json";
   nixos = import <nixpkgs/nixos/lib/eval-config.nix> {
     inherit pkgs;
     modules = [
@@ -12,13 +13,10 @@ let
         agenixManager = {
           enable = true;
           secretsPath = "/secrets";
+          manifestPath = manifestPath;
           keys.systems = [ "ssh-ed25519 AAAA...test" ];
           keys.users = [ "ssh-ed25519 AAAA...userkey" ];
           identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
-          secrets = [
-            { name = "t1"; keys = "systems"; owner = "root"; group = "root"; mode = "0400"; }
-            { name = "t2"; keys = "all"; owner = "postgres"; group = "postgres"; mode = "0600"; }
-          ];
         };
       })
     ];
