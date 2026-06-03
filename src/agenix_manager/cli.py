@@ -208,6 +208,11 @@ def remove(ctx: click.Context, name: str, force: bool) -> None:
         save_manifest(manifest_path, manifest)
         click.echo(f"[agenix-manager] Removed '{name}' from manifest")
 
+    resolved = resolve_all(manifest, cfg.keys, cfg.secrets_path)
+    cfg = cfg.model_copy(update={"secrets": resolved})
+    write_secrets_nix(cfg)
+    ctx.obj["cfg"] = cfg
+
 
 @main.command()
 @click.option("--force", is_flag=True, help="Skip all confirmation prompts")
