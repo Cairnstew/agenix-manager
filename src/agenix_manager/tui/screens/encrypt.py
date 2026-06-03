@@ -1,10 +1,9 @@
-from pathlib import Path
 from typing import Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import Footer, Header
+from textual.widgets import Footer, Header, Label
 
 from ...config import NixConfig
 from ...ops.encrypt import encrypt_secret
@@ -24,9 +23,19 @@ class EncryptScreen(Screen[None]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        self.table = SecretTable(cfg=self.cfg)
+        self.table = SecretTable(cfg=self.cfg, show_present_only=True)
         yield self.table
+        yield Label(
+            "Create new secrets via [bold]New secret[/] in the main menu",
+            id="encrypt-hint",
+        )
         yield Footer()
+
+    def on_mount(self) -> None:
+        hint = self.query_one("#encrypt-hint", Label)
+        hint.styles.padding = (0, 2)
+        hint.styles.text_align = "center"
+        hint.styles.color = "gray"
 
     async def action_encrypt_selected(self) -> None:
         row_index = self.table.cursor_row
@@ -42,17 +51,11 @@ class EncryptScreen(Screen[None]):
             self.notify(f"Secret '{name}' not found in config", severity="error")
             return
 
-        age_path = Path(self.cfg.secrets_path) / f"{name}.age"
-        was_new = not age_path.exists()
-
         try:
             async with self.app.suspend():
                 encrypt_secret(self.cfg, secret)
             self.table.refresh_data()
-            if was_new:
-                self.notify(f"Created new encrypted secret '{name}.age'", severity="information")
-            else:
-                self.notify(f"Edited existing secret '{name}.age'", severity="information")
+            self.notify(f"Edited existing secret '{name}.age'", severity="information")
         except AgenixOpError as e:
             self.notify(f"Encrypt failed: {e.stderr}", severity="error")
             self.table.refresh_data()
