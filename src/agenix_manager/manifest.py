@@ -55,6 +55,15 @@ class Manifest(BaseModel):
 
 def resolve_keys(scope: str | list[str], key_groups: KeyGroups) -> list[str]:
     if isinstance(scope, list):
+        known = {"all", "systems", "users", "other"} | set(key_groups.model_extra or {})
+        if all(s in known for s in scope):
+            result: list[str] = []
+            for s in scope:
+                if s == "all":
+                    result.extend(key_groups.systems + key_groups.users + key_groups.other)
+                else:
+                    result.extend(getattr(key_groups, s))
+            return result
         return scope
     if scope == "all":
         return key_groups.systems + key_groups.users + key_groups.other

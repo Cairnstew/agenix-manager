@@ -3,11 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from textual import events
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, ListItem, ListView, Static
+from textual.widgets import Button, Footer, Header, Input, Label, SelectionList, Static
 
 from ...config import NixConfig
 from ...manifest import (
@@ -27,8 +28,6 @@ class NewSecretScreen(Screen[None]):
     BINDINGS = [
         Binding("escape", "go_back_or_exit", "Back"),
         Binding("enter", "advance_or_create", "Confirm"),
-        Binding("left", "go_back_or_exit", "Back"),
-        Binding("right", "advance_or_create", "Next"),
     ]
 
     CSS = """
@@ -38,7 +37,7 @@ class NewSecretScreen(Screen[None]):
     #step-title { padding-bottom: 0; }
     #step-description { padding-bottom: 1; }
     #button-row { padding-top: 1; align: right middle; }
-    #button-row Button { margin: 0 1; min-width: 12; }
+    #button-row Button { margin: 0 1; min-width: 12; text-align: center; }
     Input { margin-bottom: 0; }
     .field-label { padding-top: 1; text-style: bold; }
     .field-hint { color: $text-muted; padding-bottom: 1; }
@@ -54,7 +53,7 @@ class NewSecretScreen(Screen[None]):
         self._scope_list_populated = False
 
         self.secret_name = ""
-        self.secret_scope: str | list[str] = "users"
+        self.secret_scope: str | list[str] = "all"
         self.secret_owner = "root"
         self.secret_group = "root"
         self.secret_mode = "0400"
@@ -76,7 +75,7 @@ class NewSecretScreen(Screen[None]):
                 )
                 yield Label("", id="name-error", classes="error")
             with Vertical(id="scope-section", classes="hidden"):
-                yield ListView(id="scope-list")
+                yield SelectionList(id="scope-list")
             with Vertical(id="perms-section", classes="hidden"):
                 yield Label("[b]Owner[/]", classes="field-label")
                 yield Input(value="root", placeholder="e.g. root", id="owner-input")
@@ -98,7 +97,7 @@ class NewSecretScreen(Screen[None]):
                 )
             with Horizontal(id="button-row"):
                 yield Button("Cancel", id="cancel-btn", variant="default")
-                yield Button("Next", id="next-btn", variant="primary", classes="hidden")
+                yield Button("Next", id="next-btn", variant="default", classes="hidden")
                 yield Button("Back", id="back-btn", variant="default", classes="hidden")
                 yield Button("Create", id="create-btn", variant="success", classes="hidden")
         yield Footer()
@@ -133,7 +132,7 @@ class NewSecretScreen(Screen[None]):
             desc.update("Select which key group should be able to decrypt this secret")
             if not self._scope_list_populated:
                 self._scope_list_populated = True
-                list_view = self.query_one("#scope-list", ListView)
+                selection_list = self.query_one("#scope-list", SelectionList)
                 groups = {
                     "all": (
                         len(self.cfg.keys.systems)
@@ -148,13 +147,15 @@ class NewSecretScreen(Screen[None]):
                 if hasattr(self.cfg.keys, "model_extra") and self.cfg.keys.model_extra:
                     extra = {k: len(v) for k, v in self.cfg.keys.model_extra.items()}
                 groups.update(extra)
+                options = []
                 for scope_name, count in groups.items():
                     label = f"{scope_name}  ({count} key{'s' if count != 1 else ''})"
-                    list_view.append(ListItem(Static(label), id=scope_name))
+                    options.append((label, scope_name, scope_name == self.secret_scope))
+                selection_list.add_options(options)
             next_btn.classes = ""
             back_btn.classes = ""
             create_btn.classes = "hidden"
-            self.query_one("#scope-list", ListView).focus()
+            self.query_one("#scope-list", SelectionList).focus()
         elif step == 3:
             title.update("[bold]Step 3/3: Permissions[/]")
             desc.update("Set file owner, group, and mode for the decrypted secret")
@@ -173,6 +174,19 @@ class NewSecretScreen(Screen[None]):
         if any(s.name == name for s in self.manifest.secrets):
             return f"Secret '{name}' already exists in manifest"
         return None
+
+    def on_key(self, event: events.Key) -> None:
+        if event.key in ("left", "right"):
+            focused = self.focused
+            buttons = [b for b in self.query("#button-row Button") if b.display]
+            if focused in buttons:
+                idx = buttons.index(focused)
+                if event.key == "left" and idx > 0:
+                    buttons[idx - 1].focus()
+                    event.stop()
+                elif event.key == "right" and idx < len(buttons) - 1:
+                    buttons[idx + 1].focus()
+                    event.stop()
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "cancel-btn":
@@ -208,12 +222,15 @@ class NewSecretScreen(Screen[None]):
             self.secret_name = name
             self._show_step(2)
         elif self.step == 2:
-            list_view = self.query_one("#scope-list", ListView)
-            if list_view.index is None:
-                self.notify("Please select a scope", severity="warning")
+            selection_list = self.query_one("#scope-list", SelectionList)
+            selected = selection_list.selected
+            if not selected:
+                self.notify("Please select at least one scope", severity="warning")
                 return
-            selected = list_view.children[list_view.index]
-            self.secret_scope = selected.id or "users"
+            if len(selected) == 1:
+                self.secret_scope = selected[0]
+            else:
+                self.secret_scope = selected
             self._show_step(3)
 
     def _go_back(self) -> None:

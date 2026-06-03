@@ -65,22 +65,25 @@ in {
     enable = lib.mkEnableOption "agenixManager declarative secrets";
 
     manifestPath = lib.mkOption {
-      type = lib.types.path;
-      default = toString cfg.secretsPath + "/secrets-manifest.json";
+      type = lib.types.str;
+      default = cfg.secretsPath + "/secrets-manifest.json";
       defaultText = lib.literalMD "`<secretsPath>/secrets-manifest.json`";
       description = ''
         Path to the secrets manifest JSON file.
         The manifest is maintained by the agenix-manager CLI.
+        Use a string path (not a Nix path literal) to avoid Nix store resolution.
         If the file does not exist (bootstrap), secrets are empty and a
         warning is emitted instructing the user to run 'agenix-manager new'.
       '';
     };
 
     secretsPath = lib.mkOption {
-      type = lib.types.path;
+      type = lib.types.str;
       description = ''
         Absolute path to the directory containing .age files.
-        Example: ./secrets.
+        Use a string path (not a Nix path literal) to avoid
+        having Nix resolve it to the read-only store.
+        Example: "/etc/secrets".
       '';
     };
 
@@ -203,14 +206,14 @@ in {
     };
 
     agenixManager.cliConfig = {
-      secretsPath      = toString cfg.secretsPath;
+      secretsPath      = cfg.secretsPath;
       secretsNixPath   = "/etc/agenix/secrets.nix";
       keysSnapshotPath = "/etc/agenix/keys-snapshot.json";
       identities       = cfg.identities;
       keys             = cfg.keyGroups // { all = cfg.keyGroups.systems ++ cfg.keyGroups.users ++ cfg.keyGroups.other; };
       secrets = map (s: {
         inherit (s) name owner group mode scope keys;
-        file  = "${toString cfg.secretsPath}/${s.name}.age";
+        file  = "${cfg.secretsPath}/${s.name}.age";
       }) _manifestSecrets;
     };
 
