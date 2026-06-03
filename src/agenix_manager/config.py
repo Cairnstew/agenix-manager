@@ -41,6 +41,7 @@ class NixConfig(BaseModel):
     identities: list[str]
     keys: KeyGroups
     secrets: list[SecretDef]
+    agenix_bin: str | None = Field(alias="agenixBin", default=None)
 
     @model_validator(mode="after")
     def _validate_secret_keys_nonempty(self) -> "NixConfig":

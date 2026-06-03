@@ -8,7 +8,9 @@ from ..config import NixConfig, SecretDef
 from .errors import AgenixOpError
 
 
-def _find_agenix() -> str:
+def _find_agenix(cfg: NixConfig) -> str:
+    if cfg.agenix_bin:
+        return cfg.agenix_bin
     agenix = shutil.which("agenix")
     if agenix:
         return agenix
@@ -22,7 +24,7 @@ def _find_agenix() -> str:
 
 
 def encrypt_secret(cfg: NixConfig, secret: SecretDef) -> None:
-    agenix_bin = _find_agenix()
+    agenix_bin = _find_agenix(cfg)
     rules = str(Path(cfg.secrets_path) / "secrets.nix")
     try:
         subprocess.run(

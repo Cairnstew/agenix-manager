@@ -6,6 +6,7 @@ let
   stubOptions = {
     age.secrets = lib.mkOption { type = lib.types.attrsOf lib.types.raw; default = {}; };
     age.identityPaths = lib.mkOption { type = lib.types.listOf lib.types.str; default = []; };
+    age.ageBin = lib.mkOption { type = lib.types.str; default = "${pkgs.agenix}/bin/agenix"; };
     environment.systemPackages = lib.mkOption { type = lib.types.listOf lib.types.package; default = []; };
     system.activationScripts = lib.mkOption {
       type = lib.types.attrsOf (lib.types.submodule {
