@@ -52,7 +52,11 @@ class TestCliSync:
                 "all": ["ssh-ed25519 AAAA...k"],
             },
             "secrets": [
-                {"name": "test-sync", "keys": ["ssh-ed25519 AAAA...k"], "file": str(secrets_dir / "test-sync.age")}
+                {
+                    "name": "test-sync",
+                    "keys": ["ssh-ed25519 AAAA...k"],
+                    "file": str(secrets_dir / "test-sync.age"),
+                }
             ],
         }
         config_file = tmp_path / "config.json"
@@ -77,7 +81,9 @@ class TestCliSync:
                 "other": [],
                 "all": ["ssh-ed25519 AAAA...k"],
             },
-            "secrets": [{"name": "h", "keys": ["ssh-ed25519 AAAA...k"], "file": str(secrets_dir / "h.age")}],
+            "secrets": [
+                {"name": "h", "keys": ["ssh-ed25519 AAAA...k"], "file": str(secrets_dir / "h.age")}
+            ],
         }
         config_file = tmp_path / "config.json"
         config_file.write_text(json.dumps(config))
@@ -127,7 +133,9 @@ class TestCliRemove:
             "secrets_path": str(secrets_dir),
             "identities": [],
             "keys": {"systems": [], "users": [], "other": [], "all": []},
-            "secrets": [{"name": "test-secret", "keys": ["ssh-ed25519 AAAA...k"], "file": str(age_file)}],
+            "secrets": [
+                {"name": "test-secret", "keys": ["ssh-ed25519 AAAA...k"], "file": str(age_file)}
+            ],
         }
         config_file = tmp_path / "config.json"
         config_file.write_text(json.dumps(config))
@@ -212,14 +220,19 @@ class TestCliNew:
         secrets_dir = tmp_path / "secrets"
         secrets_dir.mkdir()
         config_file = tmp_path / "config.json"
-        config_file.write_text(json.dumps({
-            "secrets_path": str(secrets_dir),
-            "identities": [],
-            "keys": {"systems": ["k"], "users": [], "other": [], "all": ["k"]},
-            "secrets": [],
-        }))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "secrets_path": str(secrets_dir),
+                    "identities": [],
+                    "keys": {"systems": ["k"], "users": [], "other": [], "all": ["k"]},
+                    "secrets": [],
+                }
+            )
+        )
         result = runner.invoke(
-            main, ["--config-file", str(config_file), "new"],
+            main,
+            ["--config-file", str(config_file), "new"],
             input="myvalue",
         )
         assert result.exit_code != 0
@@ -229,24 +242,34 @@ class TestCliNew:
         secrets_dir = tmp_path / "secrets"
         secrets_dir.mkdir(parents=True, exist_ok=True)
         config_file = tmp_path / "config.json"
-        config_file.write_text(json.dumps({
-            "secrets_path": str(secrets_dir),
-            "identities": ["/etc/ssh/ssh_host_ed25519_key"],
-            "keys": {
-                "systems": ["ssh-ed25519 AAAA...s"],
-                "users": ["ssh-ed25519 AAAA...u"],
-                "other": [],
-                "all": ["ssh-ed25519 AAAA...s", "ssh-ed25519 AAAA...u"],
-            },
-            "secrets": [],
-        }))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "secrets_path": str(secrets_dir),
+                    "identities": ["/etc/ssh/ssh_host_ed25519_key"],
+                    "keys": {
+                        "systems": ["ssh-ed25519 AAAA...s"],
+                        "users": ["ssh-ed25519 AAAA...u"],
+                        "other": [],
+                        "all": ["ssh-ed25519 AAAA...s", "ssh-ed25519 AAAA...u"],
+                    },
+                    "secrets": [],
+                }
+            )
+        )
 
         with unittest.mock.patch("subprocess.run") as mock_run:
             mock_run.return_value.stdout = ""
             result = runner.invoke(
-                main, [
-                    "--config-file", str(config_file),
-                    "new", "--name", "github-token", "--scope", "users",
+                main,
+                [
+                    "--config-file",
+                    str(config_file),
+                    "new",
+                    "--name",
+                    "github-token",
+                    "--scope",
+                    "users",
                     "--stdin",
                 ],
                 input="mysecretvalue",
@@ -266,19 +289,30 @@ class TestCliNew:
         secrets_dir = tmp_path / "secrets"
         secrets_dir.mkdir(parents=True, exist_ok=True)
         config_file = tmp_path / "config.json"
-        config_file.write_text(json.dumps({
-            "secrets_path": str(secrets_dir),
-            "identities": [],
-            "keys": {"systems": ["k"], "users": ["u"], "other": [], "all": ["k", "u"]},
-            "secrets": [],
-        }))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "secrets_path": str(secrets_dir),
+                    "identities": [],
+                    "keys": {"systems": ["k"], "users": ["u"], "other": [], "all": ["k", "u"]},
+                    "secrets": [],
+                }
+            )
+        )
 
         with unittest.mock.patch("subprocess.run") as mock_run:
             mock_run.return_value.stdout = ""
             runner.invoke(
-                main, [
-                    "--config-file", str(config_file),
-                    "new", "--name", "test", "--scope", "users", "--stdin",
+                main,
+                [
+                    "--config-file",
+                    str(config_file),
+                    "new",
+                    "--name",
+                    "test",
+                    "--scope",
+                    "users",
+                    "--stdin",
                 ],
                 input="data",
             )
@@ -292,24 +326,46 @@ class TestCliNew:
         secrets_dir = tmp_path / "secrets"
         secrets_dir.mkdir(parents=True, exist_ok=True)
         manifest_path = secrets_dir / "secrets-manifest.json"
-        manifest_path.write_text(json.dumps({
-            "version": 1,
-            "secrets": [{"name": "existing", "scope": "users"}],
-        }))
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "secrets": [{"name": "existing", "scope": "users"}],
+                }
+            )
+        )
         config_file = tmp_path / "config.json"
-        config_file.write_text(json.dumps({
-            "secrets_path": str(secrets_dir),
-            "identities": [],
-            "keys": {"systems": ["k"], "users": ["u"], "other": [], "all": ["k", "u"]},
-            "secrets": [{"name": "existing", "keys": ["k"], "scope": "users", "file": f"{secrets_dir}/existing.age"}],
-        }))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "secrets_path": str(secrets_dir),
+                    "identities": [],
+                    "keys": {"systems": ["k"], "users": ["u"], "other": [], "all": ["k", "u"]},
+                    "secrets": [
+                        {
+                            "name": "existing",
+                            "keys": ["k"],
+                            "scope": "users",
+                            "file": f"{secrets_dir}/existing.age",
+                        }
+                    ],
+                }
+            )
+        )
 
         with unittest.mock.patch("subprocess.run") as mock_run:
             mock_run.return_value.stdout = ""
             result = runner.invoke(
-                main, [
-                    "--config-file", str(config_file),
-                    "new", "--name", "existing", "--scope", "users", "--stdin",
+                main,
+                [
+                    "--config-file",
+                    str(config_file),
+                    "new",
+                    "--name",
+                    "existing",
+                    "--scope",
+                    "users",
+                    "--stdin",
                 ],
                 input="data",
             )
@@ -320,16 +376,27 @@ class TestCliNew:
         secrets_dir = tmp_path / "secrets"
         secrets_dir.mkdir(parents=True, exist_ok=True)
         config_file = tmp_path / "config.json"
-        config_file.write_text(json.dumps({
-            "secrets_path": str(secrets_dir),
-            "identities": [],
-            "keys": {"systems": [], "users": [], "other": [], "all": []},
-            "secrets": [],
-        }))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "secrets_path": str(secrets_dir),
+                    "identities": [],
+                    "keys": {"systems": [], "users": [], "other": [], "all": []},
+                    "secrets": [],
+                }
+            )
+        )
         result = runner.invoke(
-            main, [
-                "--config-file", str(config_file),
-                "new", "--name", "bad", "--scope", "nonexistent", "--stdin",
+            main,
+            [
+                "--config-file",
+                str(config_file),
+                "new",
+                "--name",
+                "bad",
+                "--scope",
+                "nonexistent",
+                "--stdin",
             ],
             input="data",
         )

@@ -14,6 +14,7 @@ class StatusScreen(Screen[None]):
     BINDINGS = [
         Binding("escape", "app.pop_screen", "Back"),
     ]
+
     def __init__(self, cfg: NixConfig, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cfg = cfg

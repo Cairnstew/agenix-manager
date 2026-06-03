@@ -21,7 +21,7 @@ def _load_current_keys(secret_name: str) -> list[str] | None:
         data = json.loads(KEYS_SNAPSHOT_PATH.read_text())
         keys = data.get(secret_name)
         if keys is not None:
-            return keys
+            return keys  # type: ignore[no-any-return]
     except (json.JSONDecodeError, OSError):
         pass
     return None
@@ -75,9 +75,7 @@ class RekeyConfirmScreen(ModalScreen[bool]):
         Binding("escape", "cancel", "Cancel"),
     ]
 
-    def __init__(
-        self, cfg: NixConfig, secret: SecretDef, **kwargs: Any
-    ) -> None:
+    def __init__(self, cfg: NixConfig, secret: SecretDef, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cfg = cfg
         self.secret = secret

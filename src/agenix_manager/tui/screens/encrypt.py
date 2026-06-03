@@ -52,7 +52,7 @@ class EncryptScreen(Screen[None]):
             return
 
         try:
-            async with self.app.suspend():
+            with self.app.suspend():
                 encrypt_secret(self.cfg, secret)
             self.table.refresh_data()
             self.notify(f"Edited existing secret '{name}.age'", severity="information")

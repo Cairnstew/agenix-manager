@@ -57,7 +57,7 @@ let
   secretsNixSmokeTest = pkgs.runCommand "secrets-nix-smoke" {
     nativeBuildInputs = [ pkgs.nix ];
   } ''
-    content='${lib.escapeShellArg evalTest.config.agenixManager.secretsNixContent}'
+    content=${lib.escapeShellArg evalTest.config.agenixManager.secretsNixContent}
     echo "$content" | ${pkgs.nix}/bin/nix-instantiate --eval --strict --stdin 2>/dev/null || {
       echo "FAIL: secrets.nix content is not valid Nix"
       exit 1
@@ -65,9 +65,11 @@ let
     touch "$out"
   '';
 
-  secretsNixDriftTest = pkgs.runCommand "secrets-nix-drift" {} ''
-    actual='${lib.escapeShellArg evalTest.config.agenixManager.secretsNixContent}'
-    expected='${lib.escapeShellArg expectedContent}'
+  secretsNixDriftTest = pkgs.runCommand "secrets-nix-drift" {
+    nativeBuildInputs = [ pkgs.diffutils ];
+  } ''
+    actual=${lib.escapeShellArg evalTest.config.agenixManager.secretsNixContent}
+    expected=${lib.escapeShellArg expectedContent}
     diff <(echo "$expected") <(echo "$actual") || {
       echo "FAIL: secrets.nix content has drifted from expected reference"
       exit 1

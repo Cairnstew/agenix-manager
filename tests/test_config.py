@@ -70,9 +70,7 @@ class TestNixConfig:
             "secrets_path": "/tmp/test",
             "identities": [],
             "keys": {"systems": [], "users": [], "other": [], "all": []},
-            "secrets": [
-                {"name": "bad", "keys": [], "file": "/tmp/test/bad.age"}
-            ],
+            "secrets": [{"name": "bad", "keys": [], "file": "/tmp/test/bad.age"}],
         }
         with pytest.raises(ValueError, match="empty key list"):
             NixConfig.model_validate(data)

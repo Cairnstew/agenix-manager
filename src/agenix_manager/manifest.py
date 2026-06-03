@@ -27,6 +27,7 @@ class ManifestSecretEntry(BaseModel):
         if not v.strip():
             raise ValueError("Secret name cannot be empty")
         import re
+
         if not re.match(r"^[a-zA-Z0-9_-]+$", v):
             raise ValueError(
                 "Secret name must be alphanumeric with hyphens/underscores only, no spaces"
@@ -59,7 +60,7 @@ def resolve_keys(scope: str | list[str], key_groups: KeyGroups) -> list[str]:
     if scope == "all":
         return key_groups.systems + key_groups.users + key_groups.other
     try:
-        return getattr(key_groups, scope)
+        return getattr(key_groups, scope)  # type: ignore[no-any-return]
     except AttributeError:
         raise ManifestError(f"Unknown key scope '{scope}'")
 
@@ -80,9 +81,7 @@ def resolve_secret_entry(
     )
 
 
-def resolve_all(
-    manifest: Manifest, key_groups: KeyGroups, secrets_path: str
-) -> list[SecretDef]:
+def resolve_all(manifest: Manifest, key_groups: KeyGroups, secrets_path: str) -> list[SecretDef]:
     return [resolve_secret_entry(e, key_groups, secrets_path) for e in manifest.secrets]
 
 

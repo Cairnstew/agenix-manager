@@ -5,8 +5,9 @@ from pathlib import Path
 
 import click
 
-from .config import load_from_cache, load_from_file, load_from_nix_eval
+from .config import NixConfig, load_from_cache, load_from_file, load_from_nix_eval
 from .manifest import (
+    Manifest,
     ManifestError,
     add_secret,
     find_manifest_path,
@@ -21,7 +22,7 @@ from .secrets_nix import write_secrets_nix
 from .state import compute_state
 
 
-def _populate_from_manifest(cfg):
+def _populate_from_manifest(cfg: NixConfig) -> tuple[NixConfig, Manifest | None]:
     manifest_path = find_manifest_path(cfg.secrets_path)
     if not manifest_path.exists():
         return cfg, None
@@ -81,9 +82,7 @@ def main(
                 raise click.Abort from e
 
     if extra_identities:
-        cfg = cfg.model_copy(
-            update={"identities": cfg.identities + list(extra_identities)}
-        )
+        cfg = cfg.model_copy(update={"identities": cfg.identities + list(extra_identities)})
 
     cfg, _manifest = _populate_from_manifest(cfg)
 
@@ -213,7 +212,7 @@ def new(
 
 def _new_noninteractive(
     ctx: click.Context,
-    cfg,
+    cfg: NixConfig,
     manifest_path: Path,
     name: str,
     scope: str,
@@ -268,7 +267,7 @@ def _new_noninteractive(
     )
 
 
-def _new_tui(ctx: click.Context, cfg, manifest_path: Path) -> None:
+def _new_tui(ctx: click.Context, cfg: NixConfig, manifest_path: Path) -> None:
     from .tui.app import AgenixManagerApp
     from .tui.screens.new_secret import NewSecretScreen
 

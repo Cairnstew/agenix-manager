@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -45,9 +46,7 @@ class NewSecretScreen(Screen[None]):
     #name-error { padding-bottom: 1; }
     """
 
-    def __init__(
-        self, cfg: NixConfig, manifest_path: Path, **kwargs
-    ) -> None:
+    def __init__(self, cfg: NixConfig, manifest_path: Path, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cfg = cfg
         self.manifest_path = manifest_path
@@ -124,19 +123,14 @@ class NewSecretScreen(Screen[None]):
 
         if step == 1:
             title.update("[bold]Step 1/3: Secret name[/]")
-            desc.update(
-                "Enter a name for the new secret "
-                "(alphanumeric, hyphens, underscores only)"
-            )
+            desc.update("Enter a name for the new secret (alphanumeric, hyphens, underscores only)")
             next_btn.classes = ""
             back_btn.classes = "hidden"
             create_btn.classes = "hidden"
             self.query_one("#name-input", Input).focus()
         elif step == 2:
             title.update("[bold]Step 2/3: Key scope[/]")
-            desc.update(
-                "Select which key group should be able to decrypt this secret"
-            )
+            desc.update("Select which key group should be able to decrypt this secret")
             if not self._scope_list_populated:
                 self._scope_list_populated = True
                 list_view = self.query_one("#scope-list", ListView)
@@ -152,9 +146,7 @@ class NewSecretScreen(Screen[None]):
                 }
                 extra = {}
                 if hasattr(self.cfg.keys, "model_extra") and self.cfg.keys.model_extra:
-                    extra = {
-                        k: len(v) for k, v in self.cfg.keys.model_extra.items()
-                    }
+                    extra = {k: len(v) for k, v in self.cfg.keys.model_extra.items()}
                 groups.update(extra)
                 for scope_name, count in groups.items():
                     label = f"{scope_name}  ({count} key{'s' if count != 1 else ''})"
@@ -165,9 +157,7 @@ class NewSecretScreen(Screen[None]):
             self.query_one("#scope-list", ListView).focus()
         elif step == 3:
             title.update("[bold]Step 3/3: Permissions[/]")
-            desc.update(
-                "Set file owner, group, and mode for the decrypted secret"
-            )
+            desc.update("Set file owner, group, and mode for the decrypted secret")
             next_btn.classes = "hidden"
             back_btn.classes = ""
             create_btn.classes = ""
@@ -175,6 +165,7 @@ class NewSecretScreen(Screen[None]):
 
     def _validate_name(self, name: str) -> str | None:
         import re
+
         if not name.strip():
             return "Name cannot be empty"
         if not re.match(r"^[a-zA-Z0-9_-]+$", name):
@@ -262,15 +253,13 @@ class NewSecretScreen(Screen[None]):
             )
             save_manifest(self.manifest_path, self.manifest)
 
-            resolved = resolve_all(
-                self.manifest, self.cfg.keys, self.cfg.secrets_path
-            )
+            resolved = resolve_all(self.manifest, self.cfg.keys, self.cfg.secrets_path)
             updated_cfg = self.cfg.model_copy(update={"secrets": resolved})
             write_secrets_nix(updated_cfg)
 
             secret = next(s for s in resolved if s.name == self.secret_name)
 
-            async with self.app.suspend():
+            with self.app.suspend():
                 encrypt_secret(updated_cfg, secret)
 
             self.notify(

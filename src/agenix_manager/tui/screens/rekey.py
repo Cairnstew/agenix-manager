@@ -46,7 +46,7 @@ class RekeyScreen(Screen[None]):
         confirm_screen = RekeyConfirmScreen(cfg=self.cfg, secret=secret)
         self.app.push_screen(confirm_screen, self._on_rekey_confirmed)
 
-    def _on_rekey_confirmed(self, confirmed: bool) -> None:
+    def _on_rekey_confirmed(self, confirmed: bool | None) -> None:
         if not confirmed:
             return
         secret = self._pending_secret

@@ -26,7 +26,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-nix
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/flakehub-cache-action@v9
 
       - run: nix build .#default
 
@@ -35,39 +36,39 @@ jobs:
           name: agenix-manager
           path: result
 
-   publish-pypi:
-     needs: [detect, build]
-     if: needs.detect.outputs.has_cli == 'true'
-     runs-on: ubuntu-latest
-     environment: release
-     steps:
-       - uses: actions/checkout@v4
+  publish-pypi:
+    needs: [detect, build]
+    if: needs.detect.outputs.has_cli == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
 
-       - uses: actions/download-artifact@v4
-         with:
-           name: agenix-manager
-           path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: agenix-manager
+          path: dist
 
-       - uses: DeterminateSystems/nix-installer-action@v16
-       - uses: DeterminateSystems/magic-nix-cache-action@v9
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/flakehub-cache-action@v9
 
-       - name: Build and publish
-         run: |
-           nix develop .#bootstrap --command uv build
-           nix develop .#bootstrap --command uv publish
-         env:
-           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      - name: Build and publish
+        run: |
+          nix develop .#bootstrap --command uv build
+          nix develop .#bootstrap --command uv publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
 
-   github-release:
-     needs: [detect, build]
-     runs-on: ubuntu-latest
-     permissions:
-       contents: write
-     steps:
-       - uses: actions/download-artifact@v4
-         with:
-           name: agenix-manager
-           path: dist
+  github-release:
+    needs: [detect, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: agenix-manager
+          path: dist
 
       - uses: softprops/action-gh-release@v2
         with:

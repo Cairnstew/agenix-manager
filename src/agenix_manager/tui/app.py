@@ -25,9 +25,7 @@ class AgenixManagerApp(App[None]):
 
     def on_mount(self) -> None:
         if self._initial_screen:
-            screen = self._initial_screen(
-                cfg=self.cfg, **self._initial_screen_kwargs
-            )
+            screen = self._initial_screen(cfg=self.cfg, **self._initial_screen_kwargs)
             self.push_screen(screen)
         else:
             self.push_screen(MainMenuScreen(cfg=self.cfg))

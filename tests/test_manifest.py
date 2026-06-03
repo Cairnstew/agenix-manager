@@ -216,12 +216,14 @@ class TestResolveKeys:
         assert "ssh-ed25519 AAAA...o1" in keys
 
     def test_custom_group(self):
-        kg = KeyGroups.model_validate({
-            "systems": [],
-            "users": [],
-            "other": [],
-            "deployment": ["ssh-ed25519 AAAA...ci"],
-        })
+        kg = KeyGroups.model_validate(
+            {
+                "systems": [],
+                "users": [],
+                "other": [],
+                "deployment": ["ssh-ed25519 AAAA...ci"],
+            }
+        )
         keys = resolve_keys("deployment", kg)
         assert keys == ["ssh-ed25519 AAAA...ci"]
 
@@ -260,10 +262,12 @@ class TestResolveAll:
             users=["ssh-ed25519 AAAA...u1"],
             other=[],
         )
-        manifest = Manifest(secrets=[
-            ManifestSecretEntry(name="a", scope="systems"),
-            ManifestSecretEntry(name="b", scope="users"),
-        ])
+        manifest = Manifest(
+            secrets=[
+                ManifestSecretEntry(name="a", scope="systems"),
+                ManifestSecretEntry(name="b", scope="users"),
+            ]
+        )
         secrets = resolve_all(manifest, kg, "/secrets")
         assert len(secrets) == 2
         assert secrets[0].name == "a"

@@ -67,6 +67,7 @@ class TestEncryptFromStdin:
         )
         with patch("subprocess.run") as mock_run:
             import subprocess
+
             mock_run.side_effect = subprocess.CalledProcessError(
                 1, ["age", "-e", "-a", "-r", "key", "-o", "out"], stderr="error"
             )

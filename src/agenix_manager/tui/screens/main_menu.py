@@ -38,7 +38,7 @@ class MainMenuScreen(Screen[None]):
             return
         if item_id == "new-secret":
             manifest_path = find_manifest_path(self.cfg.secrets_path)
-            screen = NewSecretScreen(cfg=self.cfg, manifest_path=manifest_path)
+            screen: Screen[Any] = NewSecretScreen(cfg=self.cfg, manifest_path=manifest_path)
             self.app.push_screen(screen)
             return
         screens: dict[str, type[Screen[Any]]] = {

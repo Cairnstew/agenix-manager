@@ -29,7 +29,7 @@ class KeyGroups(BaseModel):
     def __getattr__(self, name: str) -> list[str]:
         extra = self.__pydantic_extra__ or {}
         if name in extra:
-            return extra[name]
+            return extra[name]  # type: ignore[no-any-return]
         msg = f"'{type(self).__name__}' has no attribute '{name}'"
         raise AttributeError(msg)
 
