@@ -26,6 +26,8 @@ class NewSecretScreen(Screen[None]):
     BINDINGS = [
         Binding("escape", "go_back_or_exit", "Back"),
         Binding("enter", "advance_or_create", "Confirm"),
+        Binding("left", "go_back_or_exit", "Back"),
+        Binding("right", "advance_or_create", "Next"),
     ]
 
     CSS = """
@@ -34,9 +36,11 @@ class NewSecretScreen(Screen[None]):
     #wizard-container { padding: 1 2; }
     #step-title { padding-bottom: 0; }
     #step-description { padding-bottom: 1; }
-    #button-row { padding-top: 1; align: center middle; }
-    #button-row Button { margin: 0 1; }
-    Input { margin-bottom: 1; }
+    #button-row { padding-top: 1; align: right middle; }
+    #button-row Button { margin: 0 1; min-width: 12; }
+    Input { margin-bottom: 0; }
+    .field-label { padding-top: 1; text-style: bold; }
+    .field-hint { color: $text-muted; padding-bottom: 1; }
     #scope-list { height: 10; }
     #name-error { padding-bottom: 1; }
     """
@@ -48,6 +52,7 @@ class NewSecretScreen(Screen[None]):
         self.cfg = cfg
         self.manifest_path = manifest_path
         self.step = 1
+        self._scope_list_populated = False
 
         self.secret_name = ""
         self.secret_scope: str | list[str] = "users"
@@ -74,9 +79,24 @@ class NewSecretScreen(Screen[None]):
             with Vertical(id="scope-section", classes="hidden"):
                 yield ListView(id="scope-list")
             with Vertical(id="perms-section", classes="hidden"):
-                yield Input(value="root", placeholder="owner", id="owner-input")
-                yield Input(value="root", placeholder="group", id="group-input")
-                yield Input(value="0400", placeholder="mode (e.g. 0400)", id="mode-input")
+                yield Label("[b]Owner[/]", classes="field-label")
+                yield Input(value="root", placeholder="e.g. root", id="owner-input")
+                yield Label(
+                    "User that will own the decrypted secret file",
+                    classes="field-hint",
+                )
+                yield Label("[b]Group[/]", classes="field-label")
+                yield Input(value="root", placeholder="e.g. root", id="group-input")
+                yield Label(
+                    "Group that will own the decrypted secret file",
+                    classes="field-hint",
+                )
+                yield Label("[b]Mode[/]", classes="field-label")
+                yield Input(value="0400", placeholder="e.g. 0400", id="mode-input")
+                yield Label(
+                    "File permissions in octal (e.g. 0400 = read-only for owner)",
+                    classes="field-hint",
+                )
             with Horizontal(id="button-row"):
                 yield Button("Cancel", id="cancel-btn", variant="default")
                 yield Button("Next", id="next-btn", variant="primary", classes="hidden")
@@ -117,7 +137,28 @@ class NewSecretScreen(Screen[None]):
             desc.update(
                 "Select which key group should be able to decrypt this secret"
             )
-            self._populate_scope_list()
+            if not self._scope_list_populated:
+                self._scope_list_populated = True
+                list_view = self.query_one("#scope-list", ListView)
+                groups = {
+                    "all": (
+                        len(self.cfg.keys.systems)
+                        + len(self.cfg.keys.users)
+                        + len(self.cfg.keys.other)
+                    ),
+                    "systems": len(self.cfg.keys.systems),
+                    "users": len(self.cfg.keys.users),
+                    "other": len(self.cfg.keys.other),
+                }
+                extra = {}
+                if hasattr(self.cfg.keys, "model_extra") and self.cfg.keys.model_extra:
+                    extra = {
+                        k: len(v) for k, v in self.cfg.keys.model_extra.items()
+                    }
+                groups.update(extra)
+                for scope_name, count in groups.items():
+                    label = f"{scope_name}  ({count} key{'s' if count != 1 else ''})"
+                    list_view.append(ListItem(Static(label), id=scope_name))
             next_btn.classes = ""
             back_btn.classes = ""
             create_btn.classes = "hidden"
@@ -130,34 +171,7 @@ class NewSecretScreen(Screen[None]):
             next_btn.classes = "hidden"
             back_btn.classes = ""
             create_btn.classes = ""
-
-    def _populate_scope_list(self) -> None:
-        list_view = self.query_one("#scope-list", ListView)
-        list_view.clear()
-
-        groups = {
-            "all": (
-                len(self.cfg.keys.systems)
-                + len(self.cfg.keys.users)
-                + len(self.cfg.keys.other)
-            ),
-            "systems": len(self.cfg.keys.systems),
-            "users": len(self.cfg.keys.users),
-            "other": len(self.cfg.keys.other),
-        }
-
-        extra = {}
-        if hasattr(self.cfg.keys, "model_extra") and self.cfg.keys.model_extra:
-            extra = {
-                k: len(v) for k, v in self.cfg.keys.model_extra.items()
-            }
-        groups.update(extra)
-
-        for scope_name, count in groups.items():
-            label = f"{scope_name}  ({count} key{'s' if count != 1 else ''})"
-            item = ListItem(Static(label))
-            item.id = scope_name
-            list_view.append(item)
+            self.query_one("#owner-input", Input).focus()
 
     def _validate_name(self, name: str) -> str | None:
         import re
