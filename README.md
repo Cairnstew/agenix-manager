@@ -86,7 +86,7 @@ If you haven't added `agenix-manager` to your system packages yet, run it
 directly from the flake:
 
 ```bash
-nix run github:Cairnstew/agenix-manager -- new --name my-secret --scope users --stdin <<< "myvalue"
+sudo nix run github:Cairnstew/agenix-manager -- new --name my-secret --scope users --stdin <<< "myvalue"
 ```
 
 If you already have the CLI installed (e.g. via the Home Manager module or
@@ -99,7 +99,7 @@ agenix-manager new --name my-secret --scope users --stdin <<< "myvalue"
 Interactive wizard (recommended for first use):
 
 ```bash
-nix run github:Cairnstew/agenix-manager -- new
+sudo nix run github:Cairnstew/agenix-manager -- new
 ```
 
 Then commit the manifest and `.age` file, and rebuild:
@@ -135,9 +135,13 @@ in a `scope` field for display purposes.
 From the flake directly (no install required):
 
 ```bash
-nix run github:Cairnstew/agenix-manager -- new
-nix run github:Cairnstew/agenix-manager -- status
+sudo nix run github:Cairnstew/agenix-manager -- new
+sudo nix run github:Cairnstew/agenix-manager -- status
 ```
+
+> `sudo` is needed because `agenix-manager` writes to `/etc/agenix/` and
+> reads from the Nix daemon. If your user is in the `trusted-users` set and
+> has write access to the secrets directory, `sudo` can be omitted.
 
 If installed on your system:
 
