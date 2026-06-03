@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -23,12 +24,20 @@ def _find_agenix(cfg: NixConfig) -> str:
     return "agenix"
 
 
+def _rules_path(cfg: NixConfig) -> str:
+    if cfg.secrets_nix_path:
+        return cfg.secrets_nix_path
+    return str(Path(cfg.secrets_path) / "secrets.nix")
+
+
 def encrypt_secret(cfg: NixConfig, secret: SecretDef) -> None:
     agenix_bin = _find_agenix(cfg)
+    env = {**os.environ, "RULES": _rules_path(cfg)}
     try:
         subprocess.run(
             [agenix_bin, "-e", f"{secret.name}.age"],
             cwd=cfg.secrets_path,
+            env=env,
             check=True,
         )
     except subprocess.CalledProcessError as e:
