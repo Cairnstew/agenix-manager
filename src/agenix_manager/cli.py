@@ -13,6 +13,7 @@ from .manifest import (
     add_secret,
     find_manifest_path,
     load_manifest,
+    remove_secret,
     resolve_all,
     save_manifest,
 )
@@ -188,16 +189,24 @@ def status(ctx: click.Context) -> None:
 @click.option("--force", is_flag=True, help="Skip confirmation prompt")
 @click.pass_context
 def remove(ctx: click.Context, name: str, force: bool) -> None:
-    """Delete a secret's .age file."""
+    """Delete a secret's .age file and remove from manifest."""
     cfg = ctx.obj["cfg"]
+    manifest_path = find_manifest_path(cfg.secrets_path)
     age_file = Path(cfg.secrets_path) / f"{name}.age"
-    if not age_file.exists():
+
+    if age_file.exists():
+        if not force:
+            click.confirm(f"Delete {age_file}?", abort=True)
+        age_file.unlink()
+        click.echo(f"[agenix-manager] Deleted {age_file}")
+    else:
         click.echo(f"[agenix-manager] No .age file found for '{name}'")
-        return
-    if not force:
-        click.confirm(f"Delete {age_file}?", abort=True)
-    age_file.unlink()
-    click.echo(f"[agenix-manager] Deleted {age_file}")
+
+    if manifest_path.exists():
+        manifest = load_manifest(manifest_path)
+        manifest = remove_secret(manifest, name)
+        save_manifest(manifest_path, manifest)
+        click.echo(f"[agenix-manager] Removed '{name}' from manifest")
 
 
 @main.command()
