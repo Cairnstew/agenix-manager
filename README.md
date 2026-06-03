@@ -9,31 +9,42 @@ eval time and wires up `config.age.secrets.*` automatically.
 ## NixOS module
 
 ```nix
-# flake.nix inputs
-inputs.agenix-manager.url = "github:Cairnstew/agenix-manager";
-inputs.agenix.url = "github:ryantm/agenix";
+# flake.nix
+{
+  inputs.agenix.url = "github:ryantm/agenix";
+  inputs.agenix-manager.url = "github:Cairnstew/agenix-manager";
 
-# configuration.nix
-{ inputs, ... }: {
-  imports = [
-    inputs.agenix.nixosModules.default
-    inputs.agenix-manager.nixosModules.default
-  ];
+  outputs = { agenix, agenix-manager, nixpkgs, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      modules = [
+        agenix.nixosModules.default
+        agenix-manager.nixosModules.default
+        ({ pkgs, ... }: {
+          # Required: makes pkgs.agenix-manager available for the module
+          nixpkgs.overlays = [ agenix-manager.overlays.default ];
 
-  agenixManager = {
-    enable      = true;
-    secretsPath = ./secrets;
+          agenixManager = {
+            enable      = true;
+            secretsPath = ./secrets;
 
-    keys.systems = [ "ssh-ed25519 AAAA...hostkey" ];
-    keys.users   = [ "ssh-ed25519 AAAA...seankey" ];
+            keys.systems = [ "ssh-ed25519 AAAA...hostkey" ];
+            keys.users   = [ "ssh-ed25519 AAAA...seankey" ];
 
-    # Optional custom key groups beyond the three built-in scopes:
-    # keyGroups.deployment = cfg.keys.systems ++ [ "ssh-ed25519 AAAA...ci-key" ];
+            # Optional custom key groups:
+            # keyGroups.deployment = cfg.keys.systems ++ [ "ssh-ed25519 AAAA...ci-key" ];
 
-    identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
+            identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
+          };
+        })
+      ];
+    };
   };
 }
 ```
+
+The `nixpkgs.overlays` line makes `pkgs.agenix-manager` available so the module
+can add it to `environment.systemPackages` automatically. Without it, set
+`agenixManager.package` explicitly to any package providing the CLI.
 
 Secrets are **not** declared in Nix — they live in the manifest. After adding
 your first secret (see CLI section below), reference them from other modules
