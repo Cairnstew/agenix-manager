@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -22,44 +24,59 @@ from .secrets_nix import write_secrets_nix
 from .state import compute_state
 
 
-def _resolve_secrets_path(cfg: NixConfig) -> NixConfig:
-    p = Path(cfg.secrets_path)
+def _resolve_store_path(store_path: str, flake_ref: str = ".") -> str | None:
+    """Try to resolve a Nix store path back to a real filesystem path.
+
+    Uses `nix flake metadata` to find the flake root, then maps the
+    store path's relative suffix to the corresponding real path.
+    Returns None if resolution fails.
+    """
+    p = Path(store_path)
     parts = p.parts
     if len(parts) < 5 or parts[1] != "nix" or parts[2] != "store":
-        return cfg
+        return None
 
     relative = Path(*parts[4:])
-    cwd = Path.cwd()
-    candidate = cwd / relative
-    if candidate.exists():
-        click.echo(
-            f"[agenix-manager] secretsPath resolved to Nix store path; using {candidate}",
-            err=True,
+    try:
+        result = subprocess.run(
+            ["nix", "flake", "metadata", flake_ref, "--json"],
+            capture_output=True,
+            text=True,
+            check=True,
         )
-        old_prefix = str(Path(*parts[:4]))
-        new_prefix = str(candidate.parent) if str(relative) != "." else str(cwd)
-        new_secrets = [
-            SecretDef(
-                name=s.name,
-                keys=s.keys,
-                scope=s.scope,
-                owner=s.owner,
-                group=s.group,
-                mode=s.mode,
-                file=s.file.replace(old_prefix, new_prefix, 1),
-            )
-            for s in cfg.secrets
-        ]
-        return cfg.model_copy(update={"secrets_path": str(candidate), "secrets": new_secrets})
+        meta = json.loads(result.stdout)
+        flake_root = Path(meta["path"])
+    except (subprocess.CalledProcessError, OSError, KeyError, json.JSONDecodeError):
+        flake_root = Path.cwd()
+
+    candidate = flake_root / relative
+    if candidate.exists():
+        return str(candidate)
+    return None
+
+
+def _resolve_secrets_path(cfg: NixConfig, flake_ref: str = ".") -> NixConfig:
+    resolved = _resolve_store_path(cfg.secrets_path, flake_ref)
+    if resolved is None:
+        return cfg
+
     click.echo(
-        f"[agenix-manager] Error: secretsPath resolved to Nix store path\n"
-        f"  {cfg.secrets_path}\n"
-        f"  but the corresponding path '{candidate}' does not exist.\n"
-        f"  Use a string path in your NixOS config:\n"
-        f'    agenixManager.secretsPath = "{candidate}";',
+        f"[agenix-manager] secretsPath resolved to Nix store path; using {resolved}",
         err=True,
     )
-    raise click.Abort()
+    new_secrets = [
+        SecretDef(
+            name=s.name,
+            keys=s.keys,
+            scope=s.scope,
+            owner=s.owner,
+            group=s.group,
+            mode=s.mode,
+            file=s.file.replace(cfg.secrets_path, resolved, 1),
+        )
+        for s in cfg.secrets
+    ]
+    return cfg.model_copy(update={"secrets_path": resolved, "secrets": new_secrets})
 
 
 def _populate_from_manifest(cfg: NixConfig) -> tuple[NixConfig, Manifest | None]:
@@ -121,7 +138,7 @@ def main(
                 click.echo(msg, err=True)
                 raise click.Abort from e
 
-    cfg = _resolve_secrets_path(cfg)
+    cfg = _resolve_secrets_path(cfg, flake)
 
     if extra_identities:
         cfg = cfg.model_copy(update={"identities": cfg.identities + list(extra_identities)})
