@@ -56,7 +56,7 @@ in {
   testScript = ''
     machine.wait_for_unit("multi-user.target")
 
-    content = machine.succeed("cat /etc/secrets/secrets.nix")
+    content = machine.succeed("cat /etc/agenix/secrets.nix")
     assert "db-password.age" in content, "secrets.nix missing db-password.age"
     assert "api-token.age" in content, "secrets.nix missing api-token.age"
     assert "master-key.age" in content, "secrets.nix missing master-key.age"

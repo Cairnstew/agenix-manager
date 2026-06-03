@@ -37,8 +37,8 @@ in {
   testScript = ''
     machine.wait_for_unit("multi-user.target")
 
-    machine.succeed("test -f /etc/secrets/secrets.nix")
-    content = machine.succeed("cat /etc/secrets/secrets.nix")
+    machine.succeed("test -f /etc/agenix/secrets.nix")
+    content = machine.succeed("cat /etc/agenix/secrets.nix")
     assert "test-secret.age" in content, f"secrets.nix missing entry:\n{content}"
 
     decrypted = machine.succeed("cat /run/agenix/test-secret")

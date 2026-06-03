@@ -53,7 +53,7 @@ in {
   testScript = ''
     machine.wait_for_unit("multi-user.target")
 
-    content = machine.succeed("cat /etc/secrets/secrets.nix")
+    content = machine.succeed("cat /etc/agenix/secrets.nix")
     assert "user-secret-1.age" in content
     assert "user-secret-2.age" in content
     assert "shared-secret.age" in content

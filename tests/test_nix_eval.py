@@ -36,6 +36,7 @@ class TestNixEvalSimple:
         data = nix_eval("eval-simple.nix")
         assert set(data.keys()) == {
             "secretsPath",
+            "secretsNixPath",
             "flakeRoot",
             "identities",
             "keys",

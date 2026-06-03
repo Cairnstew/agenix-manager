@@ -22,7 +22,11 @@ def render_secrets_nix(cfg: NixConfig) -> str:
 
 
 def write_secrets_nix(cfg: NixConfig) -> Path:
-    out = Path(cfg.secrets_path) / "secrets.nix"
+    if cfg.secrets_nix_path:
+        target = Path(cfg.secrets_nix_path)
+    else:
+        target = Path(cfg.secrets_path) / "secrets.nix"
     content = render_secrets_nix(cfg)
-    out.write_text(content)
-    return out
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content)
+    return target

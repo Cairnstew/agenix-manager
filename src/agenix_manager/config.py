@@ -28,6 +28,7 @@ class KeyGroups(BaseModel):
 class NixConfig(BaseModel):
     model_config = {"populate_by_name": True}
     secrets_path: str = Field(alias="secretsPath")
+    secrets_nix_path: str | None = Field(alias="secretsNixPath", default=None)
     flake_root: str = Field(alias="flakeRoot")
     identities: list[str]
     keys: KeyGroups

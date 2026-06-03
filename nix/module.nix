@@ -122,17 +122,22 @@ in {
           }
         '';
         secretsNixFile = pkgs.writeText "secrets.nix" secretsNixContent;
+        # Always write to a runtime-writable path; secretsPath may be a
+        # read-only Nix store path when set to self + /secrets.
+        targetPath = "/etc/agenix/secrets.nix";
       in ''
-        echo "[agenixManager] Writing secrets.nix to ${toString cfg.secretsPath}"
-        cp ${secretsNixFile} ${toString cfg.secretsPath}/secrets.nix
+        echo "[agenixManager] Writing secrets.nix to ${targetPath}"
+        mkdir -p /etc/agenix
+        cp ${secretsNixFile} ${targetPath}
       '';
       deps = [];
     };
 
     agenixManager.cliConfig = {
-      secretsPath = toString cfg.secretsPath;
-      flakeRoot   = toString cfg.flakeRoot;
-      identities  = cfg.identities;
+      secretsPath    = toString cfg.secretsPath;
+      secretsNixPath = "/etc/agenix/secrets.nix";
+      flakeRoot      = toString cfg.flakeRoot;
+      identities     = cfg.identities;
       keys = {
         systems = cfg.keys.systems;
         users   = cfg.keys.users;

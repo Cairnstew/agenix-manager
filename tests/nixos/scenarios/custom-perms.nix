@@ -43,7 +43,7 @@ in {
   testScript = ''
     machine.wait_for_unit("multi-user.target")
 
-    machine.succeed("test -f /etc/secrets/secrets.nix")
+    machine.succeed("test -f /etc/agenix/secrets.nix")
 
     decrypted = machine.succeed("cat /run/agenix/test-secret")
     assert decrypted.strip() == "custom-perms-secret", f"Unexpected content: {decrypted}"
