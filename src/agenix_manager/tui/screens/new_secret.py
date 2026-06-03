@@ -34,7 +34,7 @@ class NewSecretScreen(Screen[None]):
     #wizard-container { padding: 1 2; }
     #step-title { padding-bottom: 0; }
     #step-description { padding-bottom: 1; }
-    #button-row { padding-top: 1; align: center center; }
+    #button-row { padding-top: 1; align: center middle; }
     #button-row Button { margin: 0 1; }
     Input { margin-bottom: 1; }
     #scope-list { height: 10; }
