@@ -5,7 +5,7 @@ from pathlib import Path
 
 import click
 
-from .config import NixConfig, load_from_cache, load_from_file, load_from_nix_eval
+from .config import NixConfig, SecretDef, load_from_cache, load_from_file, load_from_nix_eval
 from .manifest import (
     Manifest,
     ManifestError,
@@ -20,6 +20,46 @@ from .ops.errors import AgenixOpError
 from .ops.remove import find_orphaned_secrets
 from .secrets_nix import write_secrets_nix
 from .state import compute_state
+
+
+def _resolve_secrets_path(cfg: NixConfig) -> NixConfig:
+    p = Path(cfg.secrets_path)
+    parts = p.parts
+    if len(parts) < 5 or parts[1] != "nix" or parts[2] != "store":
+        return cfg
+
+    relative = Path(*parts[4:])
+    cwd = Path.cwd()
+    candidate = cwd / relative
+    if candidate.exists():
+        click.echo(
+            f"[agenix-manager] secretsPath resolved to Nix store path; using {candidate}",
+            err=True,
+        )
+        old_prefix = str(Path(*parts[:4]))
+        new_prefix = str(candidate.parent) if str(relative) != "." else str(cwd)
+        new_secrets = [
+            SecretDef(
+                name=s.name,
+                keys=s.keys,
+                scope=s.scope,
+                owner=s.owner,
+                group=s.group,
+                mode=s.mode,
+                file=s.file.replace(old_prefix, new_prefix, 1),
+            )
+            for s in cfg.secrets
+        ]
+        return cfg.model_copy(update={"secrets_path": str(candidate), "secrets": new_secrets})
+    click.echo(
+        f"[agenix-manager] Error: secretsPath resolved to Nix store path\n"
+        f"  {cfg.secrets_path}\n"
+        f"  but the corresponding path '{candidate}' does not exist.\n"
+        f"  Use a string path in your NixOS config:\n"
+        f'    agenixManager.secretsPath = "{candidate}";',
+        err=True,
+    )
+    raise click.Abort()
 
 
 def _populate_from_manifest(cfg: NixConfig) -> tuple[NixConfig, Manifest | None]:
@@ -80,6 +120,8 @@ def main(
                     msg += "\n\nHint: Run from your flake directory, or use --flake /path/to/config"
                 click.echo(msg, err=True)
                 raise click.Abort from e
+
+    cfg = _resolve_secrets_path(cfg)
 
     if extra_identities:
         cfg = cfg.model_copy(update={"identities": cfg.identities + list(extra_identities)})
