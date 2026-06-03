@@ -65,8 +65,8 @@ in {
     enable = lib.mkEnableOption "agenixManager declarative secrets";
 
     manifestPath = lib.mkOption {
-      type = lib.types.path;
-      default = toString cfg.secretsPath + "/secrets-manifest.json";
+      type = lib.types.str;
+      default = "${cfg.secretsPath}/secrets-manifest.json";
       defaultText = lib.literalMD "`<secretsPath>/secrets-manifest.json`";
       description = ''
         Path to the secrets manifest JSON file.
