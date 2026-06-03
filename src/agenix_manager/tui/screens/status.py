@@ -1,6 +1,7 @@
 from typing import Any
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Footer, Header
 
@@ -10,6 +11,9 @@ from ..widgets.secret_table import SecretTable
 
 
 class StatusScreen(Screen[None]):
+    BINDINGS = [
+        Binding("escape", "app.pop_screen", "Back"),
+    ]
     def __init__(self, cfg: NixConfig, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cfg = cfg
