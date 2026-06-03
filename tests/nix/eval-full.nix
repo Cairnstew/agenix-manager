@@ -10,7 +10,6 @@ lib.evalModules {
       agenixManager = {
         enable = true;
         secretsPath = "/var/secrets";
-        flakeRoot = "/home/user/config";
         keys.systems = [ "ssh-ed25519 AAAA...s" ];
         keys.users   = [ "ssh-ed25519 AAAA...u" ];
         keys.other   = [ "ssh-ed25519 AAAA...o" ];

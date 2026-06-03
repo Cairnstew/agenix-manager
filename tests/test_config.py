@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+import pytest
+
 from agenix_manager.config import (
     KeyGroups,
     NixConfig,
@@ -26,11 +28,12 @@ class TestNixConfig:
     def test_secret_def_fields(self):
         secret = SecretDef(
             name="test-secret",
-            keys="users",
+            keys=["ssh-ed25519 AAAA...u"],
             file="/secrets/test-secret.age",
         )
         assert secret.name == "test-secret"
-        assert secret.keys == "users"
+        assert secret.keys == ["ssh-ed25519 AAAA...u"]
+        assert secret.scope == "all"
         assert secret.owner == "root"
         assert secret.group == "root"
         assert secret.mode == "0400"
@@ -40,15 +43,17 @@ class TestNixConfig:
         assert keys.systems == []
         assert keys.users == []
         assert keys.other == []
-        assert keys.all == []
 
-    def test_invalid_key_scope(self):
-        with pytest.raises(ValueError):
-            SecretDef(
-                name="bad",
-                keys="invalid_scope",
-                file="/secrets/bad.age",
-            )
+    def test_key_groups_custom_group(self):
+        data = {
+            "systems": ["ssh-ed25519 AAAA...s"],
+            "users": [],
+            "other": [],
+            "deployment": ["ssh-ed25519 AAAA...ci"],
+        }
+        keys = KeyGroups.model_validate(data)
+        assert keys.systems == ["ssh-ed25519 AAAA...s"]
+        assert keys.deployment == ["ssh-ed25519 AAAA...ci"]
 
     def test_missing_required_fields(self):
         with pytest.raises(ValueError):
@@ -58,5 +63,22 @@ class TestNixConfig:
         assert len(sample_config.secrets) == 2
         assert len(sample_config.keys.systems) == 1
         assert len(sample_config.keys.users) == 1
-        assert len(sample_config.keys.all) == 2
         assert len(sample_config.identities) == 1
+
+    def test_empty_keys_list_rejected(self):
+        data = {
+            "secrets_path": "/tmp/test",
+            "identities": [],
+            "keys": {"systems": [], "users": [], "other": [], "all": []},
+            "secrets": [
+                {"name": "bad", "keys": [], "file": "/tmp/test/bad.age"}
+            ],
+        }
+        with pytest.raises(ValueError, match="empty key list"):
+            NixConfig.model_validate(data)
+
+    def test_scope_default_is_all(self, sample_config: NixConfig):
+        assert sample_config.secrets[0].scope == "users"
+        assert sample_config.secrets[1].scope == "all"
+        default = SecretDef(name="x", keys=["k"], file="/x.age")
+        assert default.scope == "all"

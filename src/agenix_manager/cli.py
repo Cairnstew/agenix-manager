@@ -4,7 +4,8 @@ from pathlib import Path
 
 import click
 
-from .config import load_from_file, load_from_nix_eval
+from .config import load_from_cache, load_from_file, load_from_nix_eval
+from .ops.errors import AgenixOpError
 from .ops.remove import find_orphaned_secrets
 from .secrets_nix import write_secrets_nix
 from .state import compute_state
@@ -12,6 +13,12 @@ from .state import compute_state
 
 @click.group(invoke_without_command=True)
 @click.option("--host", default=None, help="NixOS hostname to eval config for")
+@click.option(
+    "--flake",
+    default=".",
+    help="Flake reference for nix eval (default: .)",
+    show_default=True,
+)
 @click.option(
     "--config-file",
     type=click.Path(exists=True, path_type=Path),
@@ -28,6 +35,7 @@ from .state import compute_state
 def main(
     ctx: click.Context,
     host: str | None,
+    flake: str,
     config_file: Path | None,
     extra_identities: tuple[str, ...],
 ) -> None:
@@ -35,12 +43,29 @@ def main(
     if config_file:
         cfg = load_from_file(config_file)
     else:
-        cfg = load_from_nix_eval(host)
+        cache = load_from_cache(host)
+        if cache is not None:
+            cfg = cache
+        else:
+            try:
+                cfg = load_from_nix_eval(host, flake_ref=flake)
+            except AgenixOpError as e:
+                msg = f"[agenix-manager] Error: {e.stderr.strip()}"
+                if "flake" in e.stderr.lower() or "not found" in e.stderr.lower():
+                    msg += "\n\nHint: Run from your flake directory, or use --flake /path/to/config"
+                click.echo(msg, err=True)
+                raise click.Abort from e
 
     if extra_identities:
-        cfg.identities = list(cfg.identities) + list(extra_identities)
+        cfg = cfg.model_copy(
+            update={"identities": cfg.identities + list(extra_identities)}
+        )
 
-    written = write_secrets_nix(cfg)
+    try:
+        written = write_secrets_nix(cfg)
+    except OSError as e:
+        click.echo(f"[agenix-manager] Error writing secrets.nix: {e}", err=True)
+        raise click.Abort from e
     click.echo(f"[agenix-manager] secrets.nix synced -> {written}")
 
     ctx.ensure_object(dict)
@@ -78,7 +103,7 @@ def status(ctx: click.Context) -> None:
         exists = "[green]Y[/]" if s.age_file_exists else "[red]N[/]"
         table.add_row(
             s.definition.name,
-            s.definition.keys,
+            s.definition.scope,
             exists,
             f"{s.definition.owner}:{s.definition.mode}",
         )

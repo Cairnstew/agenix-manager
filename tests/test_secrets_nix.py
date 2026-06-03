@@ -66,3 +66,8 @@ class TestSecretsNix:
         assert "db-password.age" in data
         assert data["github-token.age"]["publicKeys"] == ["ssh-ed25519 AAAA...userkey"]
         assert len(data["db-password.age"]["publicKeys"]) == 2
+
+    def test_render_literal_key_list(self, sample_config_with_tmp):
+        sample_config_with_tmp.secrets[0].keys = ["ssh-ed25519 AAAA...directkey"]
+        content = render_secrets_nix(sample_config_with_tmp)
+        assert '"ssh-ed25519 AAAA...directkey"' in content

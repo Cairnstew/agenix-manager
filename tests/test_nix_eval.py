@@ -37,7 +37,7 @@ class TestNixEvalSimple:
         assert set(data.keys()) == {
             "secretsPath",
             "secretsNixPath",
-            "flakeRoot",
+            "keysSnapshotPath",
             "identities",
             "keys",
             "secrets",
@@ -47,7 +47,6 @@ class TestNixEvalSimple:
         data = nix_eval("eval-simple.nix")
         cfg = NixConfig.model_validate(data)
         assert cfg.secrets_path == "/secrets"
-        assert cfg.flake_root == "/etc/nixos"
 
     def test_single_secret(self):
         data = nix_eval("eval-simple.nix")
@@ -73,6 +72,10 @@ class TestNixEvalSimple:
         assert secret["group"] == "root"
         assert secret["mode"] == "0400"
 
+    def test_scope_preserved(self):
+        data = nix_eval("eval-simple.nix")
+        assert data["secrets"][0]["scope"] == "systems"
+
 
 class TestNixEvalFull:
     def test_four_secrets(self):
@@ -93,12 +96,16 @@ class TestNixEvalFull:
         assert secrets["sys-key"]["owner"] == "root"
         assert secrets["sys-key"]["group"] == "root"
         assert secrets["sys-key"]["mode"] == "0400"
+        assert secrets["sys-key"]["scope"] == "systems"
         assert secrets["user-token"]["owner"] == "alice"
         assert secrets["user-token"]["group"] == "users"
         assert secrets["user-token"]["mode"] == "0600"
+        assert secrets["user-token"]["scope"] == "users"
+        assert secrets["ci-secret"]["scope"] == "other"
         assert secrets["global-db"]["owner"] == "postgres"
         assert secrets["global-db"]["group"] == "postgres"
         assert secrets["global-db"]["mode"] == "0600"
+        assert secrets["global-db"]["scope"] == "all"
 
     def test_age_secrets_wired(self):
         data = nix_eval("eval-full.nix", "config.age.secrets")
@@ -109,10 +116,6 @@ class TestNixEvalFull:
         data = nix_eval("eval-full.nix", "config.age.identityPaths")
         assert len(data) == 2
         assert "/etc/ssh/ssh_host_ed25519_key" in data
-
-    def test_flake_root_passthrough(self):
-        data = nix_eval("eval-full.nix", "config.agenixManager.cliConfig")
-        assert data["flakeRoot"] == "/home/user/config"
 
     def test_secrets_path_passthrough(self):
         data = nix_eval("eval-full.nix", "config.agenixManager.cliConfig")
@@ -129,8 +132,10 @@ class TestNixEvalAppendedSecrets:
     def test_appended_secrets_keep_individual_keys(self):
         data = nix_eval("eval-appended-secrets.nix")
         by_name = {s["name"]: s for s in data["secrets"]}
-        assert by_name["from-first"]["keys"] == "users"
-        assert by_name["from-second"]["keys"] == "systems"
+        assert by_name["from-first"]["keys"] == ["ssh-ed25519 AAAA...u"]
+        assert by_name["from-first"]["scope"] == "users"
+        assert by_name["from-second"]["keys"] == ["ssh-ed25519 AAAA...s"]
+        assert by_name["from-second"]["scope"] == "systems"
 
 
 class TestNixEvalMultipleKeys:
@@ -155,10 +160,29 @@ class TestNixEvalMultipleKeys:
     def test_secret_keys_match_scope(self):
         data = nix_eval("eval-multiple-keys-per-scope.nix")
         by_name = {s["name"]: s for s in data["secrets"]}
-        assert by_name["host-key"]["keys"] == "systems"
-        assert by_name["user-key"]["keys"] == "users"
-        assert by_name["ci-key"]["keys"] == "other"
-        assert by_name["all-key"]["keys"] == "all"
+        assert by_name["host-key"]["keys"] == [
+            "ssh-ed25519 AAAA...s1",
+            "ssh-ed25519 AAAA...s2",
+            "ssh-ed25519 AAAA...s3",
+        ]
+        assert by_name["host-key"]["scope"] == "systems"
+        assert by_name["user-key"]["keys"] == [
+            "ssh-ed25519 AAAA...u1",
+            "ssh-ed25519 AAAA...u2",
+        ]
+        assert by_name["user-key"]["scope"] == "users"
+        assert by_name["ci-key"]["keys"] == ["ssh-ed25519 AAAA...o1"]
+        assert by_name["ci-key"]["scope"] == "other"
+        all_keys = [
+            "ssh-ed25519 AAAA...s1",
+            "ssh-ed25519 AAAA...s2",
+            "ssh-ed25519 AAAA...s3",
+            "ssh-ed25519 AAAA...u1",
+            "ssh-ed25519 AAAA...u2",
+            "ssh-ed25519 AAAA...o1",
+        ]
+        assert by_name["all-key"]["keys"] == all_keys
+        assert by_name["all-key"]["scope"] == "all"
 
     def test_cli_config_roundtrip(self):
         data = nix_eval("eval-multiple-keys-per-scope.nix")
@@ -173,4 +197,4 @@ class TestNixEvalErrors:
             "eval-invalid-scope.nix",
             "config.system.activationScripts.agenixManagerSecretsNix.text",
         )
-        assert "attribute 'nonexistent_scope' missing" in err
+        assert "unknown key scope 'nonexistent_scope'" in err

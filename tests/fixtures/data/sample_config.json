@@ -1,6 +1,5 @@
 {
   "secrets_path": "/tmp/agenix-test-secrets",
-  "flake_root": "/tmp/agenix-test-flake",
   "identities": ["/etc/ssh/ssh_host_ed25519_key"],
   "keys": {
     "systems": ["ssh-ed25519 AAAA...systemkey"],
@@ -11,7 +10,8 @@
   "secrets": [
     {
       "name": "github-token",
-      "keys": "users",
+      "keys": ["ssh-ed25519 AAAA...userkey"],
+      "scope": "users",
       "owner": "root",
       "group": "root",
       "mode": "0400",
@@ -19,7 +19,8 @@
     },
     {
       "name": "db-password",
-      "keys": "all",
+      "keys": ["ssh-ed25519 AAAA...systemkey", "ssh-ed25519 AAAA...userkey"],
+      "scope": "all",
       "owner": "postgres",
       "group": "postgres",
       "mode": "0400",

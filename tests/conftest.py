@@ -11,7 +11,6 @@ from agenix_manager.config import NixConfig
 def sample_config_dict() -> dict:
     return {
         "secrets_path": "/tmp/agenix-test-secrets",
-        "flake_root": "/tmp/agenix-test-flake",
         "identities": ["/etc/ssh/ssh_host_ed25519_key"],
         "keys": {
             "systems": ["ssh-ed25519 AAAA...systemkey"],
@@ -25,7 +24,8 @@ def sample_config_dict() -> dict:
         "secrets": [
             {
                 "name": "github-token",
-                "keys": "users",
+                "keys": ["ssh-ed25519 AAAA...userkey"],
+                "scope": "users",
                 "owner": "root",
                 "group": "root",
                 "mode": "0400",
@@ -33,7 +33,11 @@ def sample_config_dict() -> dict:
             },
             {
                 "name": "db-password",
-                "keys": "all",
+                "keys": [
+                    "ssh-ed25519 AAAA...systemkey",
+                    "ssh-ed25519 AAAA...userkey",
+                ],
+                "scope": "all",
                 "owner": "postgres",
                 "group": "postgres",
                 "mode": "0400",
@@ -58,7 +62,6 @@ def secrets_dir(tmp_path: Path) -> Path:
 @pytest.fixture
 def sample_config_with_tmp(sample_config_dict: dict, secrets_dir: Path) -> NixConfig:
     sample_config_dict["secrets_path"] = str(secrets_dir)
-    sample_config_dict["flake_root"] = str(secrets_dir.parent)
     for secret in sample_config_dict["secrets"]:
         secret["file"] = str(secrets_dir / f"{secret['name']}.age")
     return NixConfig.model_validate(sample_config_dict)

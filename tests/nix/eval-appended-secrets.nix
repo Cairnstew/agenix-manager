@@ -10,7 +10,6 @@ lib.evalModules {
       agenixManager = {
         enable = true;
         secretsPath = "/secrets";
-        flakeRoot = "/etc/nixos";
         keys.users   = [ "ssh-ed25519 AAAA...u" ];
         keys.systems = [ "ssh-ed25519 AAAA...s" ];
       };

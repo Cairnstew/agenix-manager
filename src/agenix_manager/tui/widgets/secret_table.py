@@ -25,7 +25,7 @@ class SecretTable(DataTable[str]):
             status_str = "Y" if s.age_file_exists else "N"
             self.add_row(
                 s.definition.name,
-                s.definition.keys,
+                s.definition.scope,
                 status_str,
                 s.definition.owner,
                 s.definition.mode,

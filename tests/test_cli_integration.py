@@ -43,7 +43,6 @@ class TestCliSync:
         secrets_dir.mkdir()
         config = {
             "secrets_path": str(secrets_dir),
-            "flake_root": str(tmp_path),
             "identities": ["/etc/ssh/ssh_host_ed25519_key"],
             "keys": {
                 "systems": ["ssh-ed25519 AAAA...k"],
@@ -52,7 +51,7 @@ class TestCliSync:
                 "all": ["ssh-ed25519 AAAA...k"],
             },
             "secrets": [
-                {"name": "test-sync", "keys": "systems", "file": str(secrets_dir / "test-sync.age")}
+                {"name": "test-sync", "keys": ["ssh-ed25519 AAAA...k"], "file": str(secrets_dir / "test-sync.age")}
             ],
         }
         config_file = tmp_path / "config.json"
@@ -70,7 +69,6 @@ class TestCliSync:
         secrets_dir.mkdir()
         config = {
             "secrets_path": str(secrets_dir),
-            "flake_root": str(tmp_path),
             "identities": [],
             "keys": {
                 "systems": ["ssh-ed25519 AAAA...k"],
@@ -78,7 +76,7 @@ class TestCliSync:
                 "other": [],
                 "all": ["ssh-ed25519 AAAA...k"],
             },
-            "secrets": [{"name": "h", "keys": "systems", "file": str(secrets_dir / "h.age")}],
+            "secrets": [{"name": "h", "keys": ["ssh-ed25519 AAAA...k"], "file": str(secrets_dir / "h.age")}],
         }
         config_file = tmp_path / "config.json"
         config_file.write_text(json.dumps(config))
@@ -126,10 +124,9 @@ class TestCliRemove:
         age_file.write_text("encrypted")
         config = {
             "secrets_path": str(secrets_dir),
-            "flake_root": str(tmp_path),
             "identities": [],
             "keys": {"systems": [], "users": [], "other": [], "all": []},
-            "secrets": [{"name": "test-secret", "keys": "all", "file": str(age_file)}],
+            "secrets": [{"name": "test-secret", "keys": ["ssh-ed25519 AAAA...k"], "file": str(age_file)}],
         }
         config_file = tmp_path / "config.json"
         config_file.write_text(json.dumps(config))
@@ -145,7 +142,6 @@ class TestCliRemove:
         secrets_dir.mkdir()
         config = {
             "secrets_path": str(secrets_dir),
-            "flake_root": str(tmp_path),
             "identities": [],
             "keys": {"systems": [], "users": [], "other": [], "all": []},
             "secrets": [],
@@ -165,7 +161,6 @@ class TestCliPrune:
         secrets_dir.mkdir()
         config = {
             "secrets_path": str(secrets_dir),
-            "flake_root": str(tmp_path),
             "identities": [],
             "keys": {"systems": [], "users": [], "other": [], "all": []},
             "secrets": [],
@@ -182,7 +177,6 @@ class TestCliPrune:
         (secrets_dir / "orphan.age").write_text("encrypted")
         config = {
             "secrets_path": str(secrets_dir),
-            "flake_root": str(tmp_path),
             "identities": [],
             "keys": {"systems": [], "users": [], "other": [], "all": []},
             "secrets": [],

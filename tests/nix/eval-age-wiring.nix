@@ -12,7 +12,6 @@ let
         agenixManager = {
           enable = true;
           secretsPath = "/secrets";
-          flakeRoot = "/etc/nixos";
           keys.systems = [ "ssh-ed25519 AAAA...test" ];
           keys.users = [ "ssh-ed25519 AAAA...userkey" ];
           identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
