@@ -90,13 +90,15 @@
         }
       );
 
-      devShells = forAllSystems (
-        system:
-        let p = pythonSets.${system}; in
-        p.pkgs.callPackage ./nix/devshell.nix {
-          inherit (p) pythonSet python pkgs;
-          inherit workspace;
-        }
+      devShells = forAllSystems (system:
+        let
+          p = pythonSets.${system};
+          raw = p.pkgs.callPackage ./nix/devshell.nix {
+            inherit (p) pythonSet python pkgs;
+            inherit workspace;
+          };
+        in
+        lib.filterAttrs (n: _: !builtins.elem n ["override" "overrideDerivation" "__functionArgs"]) raw
       );
 
       overlays.default = final: prev: {
@@ -107,13 +109,15 @@
 
       homeManagerModules.default = import ./nix/home-module.nix;
 
-      checks = forAllSystems (
-        system:
-        let p = pythonSets.${system}; in
-        p.pkgs.callPackage ./nix/checks.nix {
-          inherit lib system;
-          pythonSet = p.pythonSet;
-        }
+      checks = forAllSystems (system:
+        let
+          p = pythonSets.${system};
+          raw = p.pkgs.callPackage ./nix/checks.nix {
+            inherit lib system;
+            pythonSet = p.pythonSet;
+          };
+        in
+        lib.filterAttrs (n: _: !builtins.elem n ["override" "overrideDerivation" "__functionArgs"]) raw
       );
 
       vmTests = forAllSystems (system:

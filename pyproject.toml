@@ -22,14 +22,14 @@ dependencies = [
 agenix-manager = "agenix_manager.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "textual-dev>=0.60"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "pytest-cov>=6.0", "mypy>=1.0", "textual-dev>=0.60"]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "textual-dev>=0.60"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "pytest-cov>=6.0", "mypy>=1.0", "textual-dev>=0.60"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
