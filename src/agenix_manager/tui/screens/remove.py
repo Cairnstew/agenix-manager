@@ -7,6 +7,13 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header
 
 from ...config import NixConfig
+from ...manifest import (
+    ManifestError,
+    find_manifest_path,
+    load_manifest,
+    remove_secret,
+    save_manifest,
+)
 from ..widgets.secret_table import SecretTable
 
 
@@ -38,9 +45,24 @@ class RemoveScreen(Screen[None]):
             return
         name = str(row[0])
         age_path = Path(self.cfg.secrets_path) / f"{name}.age"
-        if not age_path.exists():
-            self.notify(f"No .age file found for '{name}'", severity="error")
-            return
-        age_path.unlink()
+
+        if age_path.exists():
+            age_path.unlink()
+            self.notify(f"Deleted {name}.age", severity="information")
+        else:
+            self.notify(
+                f"No .age file for '{name}', removing from manifest only",
+                severity="warning",
+            )
+
+        manifest_path = find_manifest_path(self.cfg.secrets_path)
+        if manifest_path.exists():
+            try:
+                manifest = load_manifest(manifest_path)
+                manifest = remove_secret(manifest, name)
+                save_manifest(manifest_path, manifest)
+            except ManifestError as e:
+                self.notify(str(e), severity="error")
+                return
+
         table.refresh_data()
-        self.notify(f"Deleted {name}.age", severity="information")
