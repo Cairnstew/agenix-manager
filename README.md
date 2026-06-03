@@ -80,14 +80,36 @@ committed before `nixos-rebuild switch` sees it.
 ### Bootstrap
 
 On a fresh system, the manifest does not yet exist. The Nix module emits a
-warning and produces an empty secrets list. Run:
+warning and produces an empty secrets list.
+
+If you haven't added `agenix-manager` to your system packages yet, run it
+directly from the flake:
+
+```bash
+nix run github:Cairnstew/agenix-manager -- new --name my-secret --scope users --stdin <<< "myvalue"
+```
+
+If you already have the CLI installed (e.g. via the Home Manager module or
+`environment.systemPackages`):
 
 ```bash
 agenix-manager new --name my-secret --scope users --stdin <<< "myvalue"
 ```
 
-Then commit the manifest and rebuild. See CLI section for the interactive
-wizard and all options.
+Interactive wizard (recommended for first use):
+
+```bash
+nix run github:Cairnstew/agenix-manager -- new
+```
+
+Then commit the manifest and `.age` file, and rebuild:
+
+```bash
+git add secrets/
+nixos-rebuild switch --flake .#myhost
+```
+
+See CLI section for all options.
 
 ### Key groups and scopes
 
@@ -109,6 +131,15 @@ and the Python CLI (at manifest load time). The original scope is preserved
 in a `scope` field for display purposes.
 
 ## CLI
+
+From the flake directly (no install required):
+
+```bash
+nix run github:Cairnstew/agenix-manager -- new
+nix run github:Cairnstew/agenix-manager -- status
+```
+
+If installed on your system:
 
 ```bash
 agenix-manager                       # full TUI
