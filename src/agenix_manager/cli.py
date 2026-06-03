@@ -24,7 +24,12 @@ from .state import compute_state
     help="Extra identity file paths for decryption",
 )
 @click.pass_context
-def main(ctx: click.Context, host, config_file, extra_identities):
+def main(
+    ctx: click.Context,
+    host: str | None,
+    config_file: Path | None,
+    extra_identities: tuple[str, ...],
+) -> None:
     """agenix-manager: declarative agenix TUI."""
     if config_file:
         cfg = load_from_file(config_file)
@@ -49,14 +54,14 @@ def main(ctx: click.Context, host, config_file, extra_identities):
 
 @main.command()
 @click.pass_context
-def sync(ctx):
+def sync(ctx: click.Context) -> None:
     """Write secrets.nix only; do not launch TUI."""
     click.echo("Done.")
 
 
 @main.command()
 @click.pass_context
-def status(ctx):
+def status(ctx: click.Context) -> None:
     """Print secret status table to stdout."""
     from rich.console import Console
     from rich.table import Table

@@ -46,7 +46,8 @@ class TestSecretsNix:
         tmp.write_text(content)
         result = subprocess.run(
             ["nix-instantiate", "--eval", "--strict", str(tmp)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0, f"nix-instantiate failed: {result.stderr}"
 
@@ -56,7 +57,9 @@ class TestSecretsNix:
         tmp.write_text(content)
         result = subprocess.run(
             ["nix-instantiate", "--eval", "--strict", "--json", str(tmp)],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         )
         data = json.loads(result.stdout)
         assert "github-token.age" in data

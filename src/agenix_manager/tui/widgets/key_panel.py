@@ -1,10 +1,12 @@
+from typing import Any
+
 from textual.widgets import Static
 
 from ...config import NixConfig
 
 
 class KeyPanel(Static):
-    def __init__(self, cfg: NixConfig, **kwargs):
+    def __init__(self, cfg: NixConfig, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cfg = cfg
 

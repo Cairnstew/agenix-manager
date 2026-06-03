@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -46,8 +45,15 @@ class TestCliSync:
             "secrets_path": str(secrets_dir),
             "flake_root": str(tmp_path),
             "identities": ["/etc/ssh/ssh_host_ed25519_key"],
-            "keys": {"systems": ["ssh-ed25519 AAAA...k"], "users": [], "other": [], "all": ["ssh-ed25519 AAAA...k"]},
-            "secrets": [{"name": "test-sync", "keys": "systems", "file": str(secrets_dir / "test-sync.age")}],
+            "keys": {
+                "systems": ["ssh-ed25519 AAAA...k"],
+                "users": [],
+                "other": [],
+                "all": ["ssh-ed25519 AAAA...k"],
+            },
+            "secrets": [
+                {"name": "test-sync", "keys": "systems", "file": str(secrets_dir / "test-sync.age")}
+            ],
         }
         config_file = tmp_path / "config.json"
         config_file.write_text(json.dumps(config))
@@ -66,7 +72,12 @@ class TestCliSync:
             "secrets_path": str(secrets_dir),
             "flake_root": str(tmp_path),
             "identities": [],
-            "keys": {"systems": ["ssh-ed25519 AAAA...k"], "users": [], "other": [], "all": ["ssh-ed25519 AAAA...k"]},
+            "keys": {
+                "systems": ["ssh-ed25519 AAAA...k"],
+                "users": [],
+                "other": [],
+                "all": ["ssh-ed25519 AAAA...k"],
+            },
             "secrets": [{"name": "h", "keys": "systems", "file": str(secrets_dir / "h.age")}],
         }
         config_file = tmp_path / "config.json"

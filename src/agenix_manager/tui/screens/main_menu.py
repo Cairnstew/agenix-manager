@@ -1,3 +1,5 @@
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widgets import Footer, Header, ListItem, ListView, Static
@@ -9,8 +11,8 @@ from .rekey import RekeyScreen
 from .status import StatusScreen
 
 
-class MainMenuScreen(Screen):
-    def __init__(self, cfg: NixConfig, **kwargs):
+class MainMenuScreen(Screen[None]):
+    def __init__(self, cfg: NixConfig, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cfg = cfg
 
@@ -26,7 +28,9 @@ class MainMenuScreen(Screen):
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         item_id = event.item.id
-        screens = {
+        if item_id is None:
+            return
+        screens: dict[str, type[Screen[None]]] = {
             "status": StatusScreen,
             "encrypt": EncryptScreen,
             "decrypt": DecryptScreen,
@@ -34,4 +38,5 @@ class MainMenuScreen(Screen):
         }
         screen_cls = screens.get(item_id)
         if screen_cls:
-            self.app.push_screen(screen_cls(cfg=self.cfg))
+            screen = screen_cls(cfg=self.cfg)  # type: ignore[call-arg]
+            self.app.push_screen(screen)

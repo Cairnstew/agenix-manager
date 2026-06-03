@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from agenix_manager.state import SecretStatus, compute_state, missing_secrets, present_secrets
-from agenix_manager.config import SecretDef
 
 
 class TestSecretState:

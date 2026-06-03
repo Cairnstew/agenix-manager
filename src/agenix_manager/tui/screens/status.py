@@ -1,3 +1,5 @@
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widgets import Footer, Header
@@ -7,8 +9,8 @@ from ..widgets.key_panel import KeyPanel
 from ..widgets.secret_table import SecretTable
 
 
-class StatusScreen(Screen):
-    def __init__(self, cfg: NixConfig, **kwargs):
+class StatusScreen(Screen[None]):
+    def __init__(self, cfg: NixConfig, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cfg = cfg
 

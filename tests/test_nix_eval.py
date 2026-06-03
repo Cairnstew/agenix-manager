@@ -4,8 +4,6 @@ import json
 import subprocess
 from pathlib import Path
 
-import pytest
-
 from agenix_manager.config import NixConfig
 
 FIXTURES = Path(__file__).parent / "nix"

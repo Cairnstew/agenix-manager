@@ -1,11 +1,13 @@
+from typing import Any
+
 from textual.widgets import DataTable
 
 from ...config import NixConfig
 from ...state import compute_state
 
 
-class SecretTable(DataTable):
-    def __init__(self, cfg: NixConfig, show_missing_only: bool = False, **kwargs):
+class SecretTable(DataTable[str]):
+    def __init__(self, cfg: NixConfig, show_missing_only: bool = False, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cfg = cfg
         self.show_missing_only = show_missing_only

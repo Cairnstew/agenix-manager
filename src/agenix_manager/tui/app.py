@@ -1,16 +1,17 @@
-from textual.app import App, ComposeResult
-from textual.widgets import Footer, Header
+from typing import Any
+
+from textual.app import App
 
 from ..config import NixConfig
 from .screens.main_menu import MainMenuScreen
 
 
-class AgenixManagerApp(App):
+class AgenixManagerApp(App[None]):
     TITLE = "agenix-manager"
     CSS_PATH = None
     BINDINGS = [("q", "quit", "Quit")]
 
-    def __init__(self, cfg: NixConfig, **kwargs):
+    def __init__(self, cfg: NixConfig, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cfg = cfg
 
