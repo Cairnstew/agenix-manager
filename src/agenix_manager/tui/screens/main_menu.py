@@ -8,6 +8,7 @@ from ...config import NixConfig
 from .decrypt import DecryptScreen
 from .encrypt import EncryptScreen
 from .rekey import RekeyScreen
+from .remove import RemoveScreen
 from .status import StatusScreen
 
 
@@ -23,6 +24,7 @@ class MainMenuScreen(Screen[None]):
             ListItem(Static("Encrypt - Edit/create a secret"), id="encrypt"),
             ListItem(Static("Decrypt - View a secret"), id="decrypt"),
             ListItem(Static("Rekey - Re-encrypt secrets"), id="rekey"),
+            ListItem(Static("Remove - Delete a secret's .age file"), id="remove"),
         )
         yield Footer()
 
@@ -35,6 +37,7 @@ class MainMenuScreen(Screen[None]):
             "encrypt": EncryptScreen,
             "decrypt": DecryptScreen,
             "rekey": RekeyScreen,
+            "remove": RemoveScreen,
         }
         screen_cls = screens.get(item_id)
         if screen_cls:

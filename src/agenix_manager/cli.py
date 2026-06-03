@@ -5,6 +5,7 @@ from pathlib import Path
 import click
 
 from .config import load_from_file, load_from_nix_eval
+from .ops.remove import find_orphaned_secrets
 from .secrets_nix import write_secrets_nix
 from .state import compute_state
 
@@ -82,3 +83,40 @@ def status(ctx: click.Context) -> None:
             f"{s.definition.owner}:{s.definition.mode}",
         )
     Console().print(table)
+
+
+@main.command()
+@click.argument("name")
+@click.option("--force", is_flag=True, help="Skip confirmation prompt")
+@click.pass_context
+def remove(ctx: click.Context, name: str, force: bool) -> None:
+    """Delete a secret's .age file."""
+    cfg = ctx.obj["cfg"]
+    age_file = Path(cfg.secrets_path) / f"{name}.age"
+    if not age_file.exists():
+        click.echo(f"[agenix-manager] No .age file found for '{name}'")
+        return
+    if not force:
+        click.confirm(f"Delete {age_file}?", abort=True)
+    age_file.unlink()
+    click.echo(f"[agenix-manager] Deleted {age_file}")
+
+
+@main.command()
+@click.option("--force", is_flag=True, help="Skip all confirmation prompts")
+@click.pass_context
+def prune(ctx: click.Context, force: bool) -> None:
+    """Delete .age files not referenced in config."""
+    cfg = ctx.obj["cfg"]
+    orphans = find_orphaned_secrets(cfg)
+    if not orphans:
+        click.echo("[agenix-manager] No orphaned .age files found")
+        return
+    click.echo(f"[agenix-manager] Found {len(orphans)} orphaned .age file(s):")
+    for f in orphans:
+        click.echo(f"  {f.name}")
+    if not force:
+        click.confirm("Delete all orphaned files?", abort=True)
+    for f in orphans:
+        f.unlink()
+        click.echo(f"[agenix-manager] Deleted {f}")

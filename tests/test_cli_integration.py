@@ -114,3 +114,82 @@ class TestCliHelp:
         assert "agenix-manager" in result.output
         assert "status" in result.output
         assert "sync" in result.output
+        assert "remove" in result.output
+        assert "prune" in result.output
+
+
+class TestCliRemove:
+    def test_remove_existing_file(self, runner: CliRunner, tmp_path: Path):
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir()
+        age_file = secrets_dir / "test-secret.age"
+        age_file.write_text("encrypted")
+        config = {
+            "secrets_path": str(secrets_dir),
+            "flake_root": str(tmp_path),
+            "identities": [],
+            "keys": {"systems": [], "users": [], "other": [], "all": []},
+            "secrets": [{"name": "test-secret", "keys": "all", "file": str(age_file)}],
+        }
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps(config))
+        result = runner.invoke(
+            main, ["--config-file", str(config_file), "remove", "test-secret", "--force"]
+        )
+        assert result.exit_code == 0
+        assert "Deleted" in result.output
+        assert not age_file.exists()
+
+    def test_remove_missing_file(self, runner: CliRunner, tmp_path: Path):
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir()
+        config = {
+            "secrets_path": str(secrets_dir),
+            "flake_root": str(tmp_path),
+            "identities": [],
+            "keys": {"systems": [], "users": [], "other": [], "all": []},
+            "secrets": [],
+        }
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps(config))
+        result = runner.invoke(
+            main, ["--config-file", str(config_file), "remove", "nonexistent", "--force"]
+        )
+        assert result.exit_code == 0
+        assert "No .age file found" in result.output
+
+
+class TestCliPrune:
+    def test_prune_no_orphans(self, runner: CliRunner, tmp_path: Path):
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir()
+        config = {
+            "secrets_path": str(secrets_dir),
+            "flake_root": str(tmp_path),
+            "identities": [],
+            "keys": {"systems": [], "users": [], "other": [], "all": []},
+            "secrets": [],
+        }
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps(config))
+        result = runner.invoke(main, ["--config-file", str(config_file), "prune", "--force"])
+        assert result.exit_code == 0
+        assert "No orphaned" in result.output
+
+    def test_prune_removes_orphans(self, runner: CliRunner, tmp_path: Path):
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir()
+        (secrets_dir / "orphan.age").write_text("encrypted")
+        config = {
+            "secrets_path": str(secrets_dir),
+            "flake_root": str(tmp_path),
+            "identities": [],
+            "keys": {"systems": [], "users": [], "other": [], "all": []},
+            "secrets": [],
+        }
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps(config))
+        result = runner.invoke(main, ["--config-file", str(config_file), "prune", "--force"])
+        assert result.exit_code == 0
+        assert "Deleted" in result.output
+        assert not (secrets_dir / "orphan.age").exists()
