@@ -6,6 +6,13 @@
 Nix flakes only see files in the git working tree. After initial write by the
 activation script, run `git add secrets/secrets.nix`.
 
+### .age files are safe to commit, but mark them binary
+Encrypted `.age` files are safe to commit to a public repository — they can
+only be decrypted by holders of the corresponding private key. However, every
+rekey or re-encrypt produces different ciphertext (random nonce), so git diffs
+are meaningless. A `.gitattributes` at the repo root with `*.age binary`
+suppresses noisy diffs and prevents git from attempting broken auto-merges.
+
 ### First run chicken-and-egg
 On a fresh system, the activation script writes `secrets.nix` at activation
 time — but agenix needs `secrets.nix` to decrypt secrets during activation.
