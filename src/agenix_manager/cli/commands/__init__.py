@@ -3,6 +3,7 @@ from .status import status
 from .new import new
 from .remove import remove
 from .prune import prune
+from .import_secrets import import_secrets
 
 
 def register_commands(group: object) -> None:
@@ -12,6 +13,7 @@ def register_commands(group: object) -> None:
     group.add_command(new)
     group.add_command(remove)
     group.add_command(prune)
+    group.add_command(import_secrets)
 
 
 __all__ = ["register_commands"]

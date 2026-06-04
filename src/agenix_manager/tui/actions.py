@@ -6,6 +6,7 @@ from typing import Any, Callable, TypeVar
 from ..config import NixConfig, SecretDef
 from ..manifest import (
     ManifestError,
+    add_secret,
     find_manifest_path,
     load_manifest,
     remove_secret,
@@ -13,12 +14,14 @@ from ..manifest import (
     save_manifest,
 )
 from ..ops.decrypt import decrypt_secret
+from ..ops.discover import find_untracked_secrets
 from ..ops.encrypt import encrypt_secret
 from ..ops.errors import AgenixOpError
 from ..ops.rekey import rekey_secrets
 from ..secrets_nix import write_secrets_nix
 from .screens.confirm import GenericConfirmScreen
 from .screens.decrypt_view import DecryptViewScreen
+from .screens.import_screen import ImportConfirmScreen
 from .screens.rekey_confirm import RekeyConfirmScreen
 
 T = TypeVar("T")
@@ -163,4 +166,49 @@ class RemoveAction(ActionHandler):
         if self._run_guarded(_do_remove, "Remove failed") is None:
             return
         self.screen._notify_ok(f"Removed secret '{name}'")
+        self.refresh()
+
+
+class ImportAction(ActionHandler):
+    def __init__(self, screen: Any, scope: str = "all") -> None:
+        super().__init__(screen)
+        self._scope = scope
+
+    def execute(self) -> None:
+        untracked = find_untracked_secrets(self.cfg)
+        if not untracked:
+            self.screen._notify_ok("No untracked .age files found")
+            return
+        self._pending_untracked = untracked
+        confirm_screen = ImportConfirmScreen(untracked=untracked)
+        self.screen.app.push_screen(confirm_screen, self._on_confirmed)
+
+    def _on_confirmed(self, confirmed: bool | None) -> None:
+        if not confirmed:
+            self.screen._notify_ok("Import cancelled")
+            return
+
+        def _do_import() -> bool:
+            manifest_path = find_manifest_path(self.cfg.secrets_path)
+            manifest = load_manifest(manifest_path)
+            for path in self._pending_untracked:
+                try:
+                    manifest = add_secret(
+                        manifest, name=path.stem, scope=self._scope
+                    )
+                except ManifestError:
+                    continue
+            save_manifest(manifest_path, manifest)
+            resolved = resolve_all(manifest, self.cfg.keys, self.cfg.secrets_path)
+            updated = self.cfg.model_copy(update={"secrets": resolved})
+            self.screen.cfg = updated
+            self.screen.app.cfg = updated
+            write_secrets_nix(updated)
+            return True
+
+        if self._run_guarded(_do_import, "Import failed") is None:
+            return
+        self.screen._notify_ok(
+            f"Imported {len(self._pending_untracked)} secret(s)"
+        )
         self.refresh()

@@ -6,6 +6,7 @@ from textual.binding import Binding
 from ..actions import (
     DecryptAction,
     EncryptAction,
+    ImportAction,
     NewSecretAction,
     RekeyAction,
     RemoveAction,
@@ -22,6 +23,7 @@ class StatusScreen(TableScreen):
         Binding("d", "decrypt", "Decrypt"),
         Binding("r", "rekey", "Rekey"),
         Binding("R", "remove", "Remove"),
+        Binding("i", "import", "Import"),
     ]
 
     def __init__(self, cfg, **kwargs):
@@ -31,6 +33,7 @@ class StatusScreen(TableScreen):
         self._decrypt_action = DecryptAction(self)
         self._rekey_action = RekeyAction(self)
         self._remove_action = RemoveAction(self)
+        self._import_action = ImportAction(self)
 
     def _compose_body(self) -> ComposeResult:
         yield KeyPanel(cfg=self.cfg)
@@ -50,3 +53,6 @@ class StatusScreen(TableScreen):
 
     def action_remove(self) -> None:
         self._remove_action.execute()
+
+    def action_import(self) -> None:
+        self._import_action.execute()
