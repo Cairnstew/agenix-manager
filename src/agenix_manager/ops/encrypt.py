@@ -1,78 +1,42 @@
 from __future__ import annotations
 
-import os
-import shutil
-import subprocess
 from pathlib import Path
 
 from ..config import NixConfig, SecretDef
-from .errors import AgenixOpError
+from .base import BaseOp
 
 
-def _find_agenix(cfg: NixConfig) -> str:
-    if cfg.agenix_bin:
-        return cfg.agenix_bin
-    agenix = shutil.which("agenix")
-    if agenix:
-        return agenix
-    for candidate in [
-        "/run/current-system/sw/bin/agenix",
-        "/nix/var/nix/profiles/default/bin/agenix",
-    ]:
-        if Path(candidate).exists():
-            return candidate
-    return "agenix"
+class EncryptOp(BaseOp):
+    """Encrypt (create / re-encrypt) a secret.
+
+    Two code paths:
+    * ``encrypt`` — launches ``$EDITOR`` via ``agenix -e``.
+    * ``encrypt_from_stdin`` — pipes plaintext directly to ``age -e -a``.
+    """
+
+    def encrypt(self, secret: SecretDef) -> None:
+        agenix = self._find_agenix()
+        self._run(
+            [agenix, "-e", f"{secret.name}.age"],
+            cwd=self.cfg.secrets_path,
+            env=self._rules_env,
+        )
+
+    def encrypt_from_stdin(self, secret: SecretDef, plaintext: str) -> None:
+        age = self._find_age()
+        out = Path(self.cfg.secrets_path) / f"{secret.name}.age"
+        cmd = [age, "-e", "-a"]
+        for key in secret.keys:
+            cmd += ["-r", key]
+        cmd += ["-o", str(out)]
+        self._run(cmd, input=plaintext)
 
 
-def _rules_path(cfg: NixConfig) -> str:
-    if cfg.secrets_nix_path:
-        return cfg.secrets_nix_path
-    return str(Path(cfg.secrets_path) / "secrets.nix")
-
+# ── module-level convenience API ──────────────────────────────────────
 
 def encrypt_secret(cfg: NixConfig, secret: SecretDef) -> None:
-    agenix_bin = _find_agenix(cfg)
-    env = {**os.environ, "RULES": _rules_path(cfg)}
-    try:
-        subprocess.run(
-            [agenix_bin, "-e", f"{secret.name}.age"],
-            cwd=cfg.secrets_path,
-            env=env,
-            check=True,
-        )
-    except subprocess.CalledProcessError as e:
-        raise AgenixOpError(
-            command=" ".join(e.cmd),
-            stderr=e.stderr or "",
-            returncode=e.returncode,
-        ) from e
-
-
-def _find_age() -> str:
-    age = shutil.which("age")
-    if age:
-        return age
-    for candidate in [
-        "/run/current-system/sw/bin/age",
-        "/nix/var/nix/profiles/default/bin/age",
-    ]:
-        if Path(candidate).exists():
-            return candidate
-    return "age"
+    EncryptOp(cfg).encrypt(secret)
 
 
 def encrypt_secret_from_stdin(cfg: NixConfig, secret: SecretDef, plaintext: str) -> None:
-    age_bin = _find_age()
-    out_path = Path(cfg.secrets_path) / f"{secret.name}.age"
-    cmd = [age_bin, "-e", "-a"]
-    for key in secret.keys:
-        cmd += ["-r", key]
-    cmd += ["-o", str(out_path)]
-    try:
-        subprocess.run(cmd, input=plaintext, text=True, check=True)
-    except subprocess.CalledProcessError as e:
-        raise AgenixOpError(
-            command=" ".join(e.cmd),
-            stderr=e.stderr or "",
-            returncode=e.returncode,
-        ) from e
+    EncryptOp(cfg).encrypt_from_stdin(secret, plaintext)

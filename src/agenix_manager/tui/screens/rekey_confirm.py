@@ -5,11 +5,10 @@ from pathlib import Path
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.binding import Binding
-from textual.screen import ModalScreen
 from textual.widgets import Label, Static
 
 from ...config import NixConfig, SecretDef
+from ..base import ConfirmModalScreen
 
 KEYS_SNAPSHOT_PATH = Path("/etc/agenix/keys-snapshot.json")
 
@@ -21,7 +20,7 @@ def _load_current_keys(secret_name: str) -> list[str] | None:
         data = json.loads(KEYS_SNAPSHOT_PATH.read_text())
         keys = data.get(secret_name)
         if keys is not None:
-            return keys  # type: ignore[no-any-return]
+            return keys
     except (json.JSONDecodeError, OSError):
         pass
     return None
@@ -38,7 +37,9 @@ def _render_diff(current: list[str], new: list[str]) -> str:
         lines.append("[yellow]New secret — no previous recipients[/]")
         lines.append("")
     elif current == new:
-        lines.append("[bold]No key changes — rekey will re-encrypt to the same recipients[/]")
+        lines.append(
+            "[bold]No key changes — rekey will re-encrypt to the same recipients[/]"
+        )
         lines.append("")
 
     if current:
@@ -67,13 +68,7 @@ def _render_diff(current: list[str], new: list[str]) -> str:
     return "\n".join(lines)
 
 
-class RekeyConfirmScreen(ModalScreen[bool]):
-    BINDINGS = [
-        Binding("y", "confirm", "Confirm"),
-        Binding("n", "cancel", "Cancel"),
-        Binding("escape", "cancel", "Cancel"),
-    ]
-
+class RekeyConfirmScreen(ConfirmModalScreen):
     def __init__(self, cfg: NixConfig, secret: SecretDef, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cfg = cfg
@@ -83,21 +78,13 @@ class RekeyConfirmScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
         yield Label("[bold]Rekey confirmation[/]", id="rekey-title")
         yield Static(self._diff_content(), id="rekey-diff")
-        yield Label("[dim]y[/] confirm  [dim]n[/] / [dim]esc[/] cancel", id="rekey-hint")
+        yield Label(
+            "[dim]y[/] confirm  [dim]n[/] / [dim]esc[/] cancel", id="rekey-hint"
+        )
 
     def _diff_content(self) -> str:
-        if self.current_keys is not None:
-            current = self.current_keys
-        else:
-            current = []
-        new = self.secret.keys
-        return _render_diff(current, new)
-
-    def action_confirm(self) -> None:
-        self.dismiss(True)
-
-    def action_cancel(self) -> None:
-        self.dismiss(False)
+        current = self.current_keys if self.current_keys is not None else []
+        return _render_diff(current, self.secret.keys)
 
     def on_mount(self) -> None:
         self.query_one("#rekey-title", Label).styles.padding = (1, 2)

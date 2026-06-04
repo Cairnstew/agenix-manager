@@ -20,6 +20,16 @@ NixOS module + TUI CLI for declarative agenix secret management. Python project 
 | `src/agenix_manager/` | Application package source |
 | `tests/` | Test suite |
 
+## Custom opencode tools
+
+Tools in `.opencode/tools/` are available as callable functions:
+
+| Tool | What it does |
+|---|---|
+| `run-tests` | Run test suite (supports `path`, `verbose`, `quick`, `fail_fast`, `cli_integration`) |
+| `run-lint` | Run ruff + mypy on `src/` |
+| `verify-project` | Check Python version sync, lock freshness, git tracking compliance |
+
 ## Rules for agents
 
 1. **Never edit `uv.lock` directly** — always use `uv lock` or `uv add`/`uv remove`.

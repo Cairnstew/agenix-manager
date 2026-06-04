@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/schemas/opencode.json",
+  "customTools": true,
+  "agent": {
+    "instructions": [
+      "This is a NixOS module + TUI CLI for declarative agenix secret management.",
+      "Python project managed with uv2nix. Python 3.12.",
+      "",
+      "Key development commands:",
+      "  - Tests: .venv/bin/python -m pytest tests/ --ignore=tests/test_nix_eval.py",
+      "  - Lint:  .venv/bin/python -m ruff check src/",
+      "  - Type:  .venv/bin/python -m mypy src/",
+      "",
+      "Custom tools available in .opencode/tools/:",
+      "  - run-tests:       Run the test suite with options",
+      "  - run-lint:        Run ruff and mypy",
+      "  - verify-project:  Check Python version sync, lock freshness, etc.",
+      "",
+      "Never edit uv.lock directly. Use: uv lock",
+      "After editing flake.nix, run: nix flake lock",
+    ],
+  },
+}

@@ -1,26 +1,24 @@
-from typing import Any
+from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.binding import Binding
-from textual.screen import Screen
-from textual.widgets import Footer, Header
 
-from ...config import NixConfig
+from ..base import ReadOnlyScreen
+from ..navigation import ScreenEntry, ScreenRegistry
 from ..widgets.key_panel import KeyPanel
 from ..widgets.secret_table import SecretTable
 
 
-class StatusScreen(Screen[None]):
-    BINDINGS = [
-        Binding("escape", "app.pop_screen", "Back"),
-    ]
-
-    def __init__(self, cfg: NixConfig, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.cfg = cfg
-
-    def compose(self) -> ComposeResult:
-        yield Header()
+class StatusScreen(ReadOnlyScreen):
+    def _compose_body(self) -> ComposeResult:
         yield KeyPanel(cfg=self.cfg)
         yield SecretTable(cfg=self.cfg)
-        yield Footer()
+
+
+ScreenRegistry.register(
+    ScreenEntry(
+        id="status",
+        label="Status",
+        description="View secret status",
+        screen_cls=StatusScreen,
+    )
+)

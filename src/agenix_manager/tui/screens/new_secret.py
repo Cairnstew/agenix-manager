@@ -5,16 +5,15 @@ from typing import Any
 
 from textual import events
 from textual.app import ComposeResult
-from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, SelectionList, Static
+from textual.widgets import Button, Input, Label, SelectionList, Static
 
 from ...config import NixConfig
 from ...manifest import (
     Manifest,
     ManifestError,
     add_secret,
+    find_manifest_path,
     load_manifest,
     resolve_all,
     save_manifest,
@@ -22,13 +21,12 @@ from ...manifest import (
 from ...ops.encrypt import encrypt_secret
 from ...ops.errors import AgenixOpError
 from ...secrets_nix import write_secrets_nix
+from ..base import WizardScreen
+from ..navigation import ScreenEntry, ScreenRegistry
 
 
-class NewSecretScreen(Screen[None]):
-    BINDINGS = [
-        Binding("escape", "go_back_or_exit", "Back"),
-        Binding("enter", "advance_or_create", "Confirm"),
-    ]
+class NewSecretScreen(WizardScreen):
+    total_steps = 3
 
     CSS = """
     .hidden { display: none; }
@@ -46,10 +44,8 @@ class NewSecretScreen(Screen[None]):
     """
 
     def __init__(self, cfg: NixConfig, manifest_path: Path, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.cfg = cfg
+        super().__init__(cfg, **kwargs)
         self.manifest_path = manifest_path
-        self.step = 1
         self._scope_list_populated = False
 
         self.secret_name = ""
@@ -63,8 +59,7 @@ class NewSecretScreen(Screen[None]):
         except ManifestError:
             self.manifest = Manifest(version=1, secrets=[])
 
-    def compose(self) -> ComposeResult:
-        yield Header(show_clock=False)
+    def _compose_body(self) -> ComposeResult:
         with Vertical(id="wizard-container"):
             yield Static("", id="step-title")
             yield Static("", id="step-description")
@@ -97,16 +92,14 @@ class NewSecretScreen(Screen[None]):
                 )
             with Horizontal(id="button-row"):
                 yield Button("Cancel", id="cancel-btn", variant="default")
-                yield Button("Next", id="next-btn", variant="default", classes="hidden")
+                yield Button("Next", id="next-btn", variant="primary", classes="hidden")
                 yield Button("Back", id="back-btn", variant="default", classes="hidden")
                 yield Button("Create", id="create-btn", variant="success", classes="hidden")
-        yield Footer()
 
     def on_mount(self) -> None:
-        self._show_step(1)
+        self._render_step(1)
 
-    def _show_step(self, step: int) -> None:
-        self.step = step
+    def _render_step(self, step: int) -> None:
         title = self.query_one("#step-title", Static)
         desc = self.query_one("#step-description", Static)
         name_section = self.query_one("#name-section", Vertical)
@@ -122,14 +115,18 @@ class NewSecretScreen(Screen[None]):
 
         if step == 1:
             title.update("[bold]Step 1/3: Secret name[/]")
-            desc.update("Enter a name for the new secret (alphanumeric, hyphens, underscores only)")
+            desc.update(
+                "Enter a name for the new secret (alphanumeric, hyphens, underscores only)"
+            )
             next_btn.classes = ""
             back_btn.classes = "hidden"
             create_btn.classes = "hidden"
             self.query_one("#name-input", Input).focus()
         elif step == 2:
             title.update("[bold]Step 2/3: Key scope[/]")
-            desc.update("Select which key group should be able to decrypt this secret")
+            desc.update(
+                "Select which key group should be able to decrypt this secret"
+            )
             if not self._scope_list_populated:
                 self._scope_list_populated = True
                 selection_list = self.query_one("#scope-list", SelectionList)
@@ -144,13 +141,18 @@ class NewSecretScreen(Screen[None]):
                     "other": len(self.cfg.keys.other),
                 }
                 extra = {}
-                if hasattr(self.cfg.keys, "model_extra") and self.cfg.keys.model_extra:
+                if (
+                    hasattr(self.cfg.keys, "model_extra")
+                    and self.cfg.keys.model_extra
+                ):
                     extra = {k: len(v) for k, v in self.cfg.keys.model_extra.items()}
                 groups.update(extra)
                 options = []
                 for scope_name, count in groups.items():
                     label = f"{scope_name}  ({count} key{'s' if count != 1 else ''})"
-                    options.append((label, scope_name, scope_name == self.secret_scope))
+                    options.append(
+                        (label, scope_name, scope_name == self.secret_scope)
+                    )
                 selection_list.add_options(options)
             next_btn.classes = ""
             back_btn.classes = ""
@@ -163,6 +165,30 @@ class NewSecretScreen(Screen[None]):
             back_btn.classes = ""
             create_btn.classes = ""
             self.query_one("#owner-input", Input).focus()
+
+    def _validate_step(self, step: int) -> bool:
+        if step == 1:
+            name_input = self.query_one("#name-input", Input)
+            name = name_input.value.strip()
+            error = self._validate_name(name)
+            if error:
+                self.query_one("#name-error", Label).update(error)
+                return False
+            self.query_one("#name-error", Label).update("")
+            self.secret_name = name
+            return True
+        elif step == 2:
+            selection_list = self.query_one("#scope-list", SelectionList)
+            selected = selection_list.selected
+            if not selected:
+                self.notify("Please select at least one scope", severity="warning")
+                return False
+            if len(selected) == 1:
+                self.secret_scope = selected[0]
+            else:
+                self.secret_scope = selected
+            return True
+        return True
 
     def _validate_name(self, name: str) -> str | None:
         import re
@@ -190,56 +216,15 @@ class NewSecretScreen(Screen[None]):
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "cancel-btn":
-            self.app.pop_screen()
+            self.action_go_back_or_exit()
         elif event.button.id == "next-btn":
-            self._advance()
+            self.action_advance_or_create()
         elif event.button.id == "back-btn":
-            self._go_back()
+            self.action_go_back_or_exit()
         elif event.button.id == "create-btn":
-            await self._create_secret()
+            await self._on_finish()
 
-    async def action_advance_or_create(self) -> None:
-        if self.step == 3:
-            await self._create_secret()
-        else:
-            self._advance()
-
-    def action_go_back_or_exit(self) -> None:
-        if self.step == 1:
-            self.app.pop_screen()
-        else:
-            self._go_back()
-
-    def _advance(self) -> None:
-        if self.step == 1:
-            name_input = self.query_one("#name-input", Input)
-            name = name_input.value.strip()
-            error = self._validate_name(name)
-            if error:
-                self.query_one("#name-error", Label).update(error)
-                return
-            self.query_one("#name-error", Label).update("")
-            self.secret_name = name
-            self._show_step(2)
-        elif self.step == 2:
-            selection_list = self.query_one("#scope-list", SelectionList)
-            selected = selection_list.selected
-            if not selected:
-                self.notify("Please select at least one scope", severity="warning")
-                return
-            if len(selected) == 1:
-                self.secret_scope = selected[0]
-            else:
-                self.secret_scope = selected
-            self._show_step(3)
-
-    def _go_back(self) -> None:
-        if self.step == 2:
-            self._show_step(1)
-        elif self.step == 3:
-            self._show_step(2)
-
-    async def _create_secret(self) -> None:
+    async def _on_finish(self) -> None:
         owner_input = self.query_one("#owner-input", Input)
         group_input = self.query_one("#group-input", Input)
         mode_input = self.query_one("#mode-input", Input)
@@ -270,7 +255,9 @@ class NewSecretScreen(Screen[None]):
             )
             save_manifest(self.manifest_path, self.manifest)
 
-            resolved = resolve_all(self.manifest, self.cfg.keys, self.cfg.secrets_path)
+            resolved = resolve_all(
+                self.manifest, self.cfg.keys, self.cfg.secrets_path
+            )
             updated_cfg = self.cfg.model_copy(update={"secrets": resolved})
             write_secrets_nix(updated_cfg)
 
@@ -289,3 +276,14 @@ class NewSecretScreen(Screen[None]):
             self.notify(f"Manifest error: {e}", severity="error")
         except AgenixOpError as e:
             self.notify(f"Encryption failed: {e.stderr}", severity="error")
+
+
+ScreenRegistry.register(
+    ScreenEntry(
+        id="new-secret",
+        label="New secret",
+        description="Create a new secret",
+        screen_cls=NewSecretScreen,
+        kwargs_factory=lambda cfg: {"manifest_path": find_manifest_path(cfg.secrets_path)},
+    )
+)

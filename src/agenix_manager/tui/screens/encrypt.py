@@ -1,35 +1,31 @@
-from typing import Any
+from __future__ import annotations
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.screen import Screen
-from textual.widgets import Footer, Header, Label
+from textual.widgets import Label
 
-from ...config import NixConfig
 from ...ops.encrypt import encrypt_secret
 from ...ops.errors import AgenixOpError
+from ..base import TableScreen
+from ..navigation import ScreenEntry, ScreenRegistry
 from ..widgets.secret_table import SecretTable
 
 
-class EncryptScreen(Screen[None]):
+class EncryptScreen(TableScreen):
     BINDINGS = [
         Binding("e", "encrypt_selected", "Encrypt"),
         Binding("escape", "app.pop_screen", "Back"),
     ]
 
-    def __init__(self, cfg: NixConfig, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.cfg = cfg
+    def _create_table(self) -> SecretTable:
+        return SecretTable(cfg=self.cfg, show_present_only=True)
 
-    def compose(self) -> ComposeResult:
-        yield Header()
-        self.table = SecretTable(cfg=self.cfg, show_present_only=True)
-        yield self.table
+    def _compose_body(self) -> ComposeResult:
+        yield from super()._compose_body()
         yield Label(
             "Create new secrets via [bold]New secret[/] in the main menu",
             id="encrypt-hint",
         )
-        yield Footer()
 
     def on_mount(self) -> None:
         hint = self.query_one("#encrypt-hint", Label)
@@ -38,24 +34,24 @@ class EncryptScreen(Screen[None]):
         hint.styles.color = "gray"
 
     async def action_encrypt_selected(self) -> None:
-        row_index = self.table.cursor_row
-        if row_index is None:
-            self.notify("No secret selected", severity="warning")
-            return
-        row = self.table.get_row_at(row_index)
-        if row is None:
-            return
-        name = str(row[0])
-        secret = next((s for s in self.cfg.secrets if s.name == name), None)
+        secret = self._get_selected_secret()
         if secret is None:
-            self.notify(f"Secret '{name}' not found in config", severity="error")
             return
-
         try:
             with self.app.suspend():
                 encrypt_secret(self.cfg, secret)
-            self.table.refresh_data()
-            self.notify(f"Edited existing secret '{name}.age'", severity="information")
+            self._refresh_table()
+            self._notify_ok(f"Edited existing secret '{secret.name}.age'")
         except AgenixOpError as e:
-            self.notify(f"Encrypt failed: {e.stderr}", severity="error")
-            self.table.refresh_data()
+            self._notify_err(f"Encrypt failed: {e.stderr}")
+            self._refresh_table()
+
+
+ScreenRegistry.register(
+    ScreenEntry(
+        id="encrypt",
+        label="Encrypt",
+        description="Edit / re-encrypt a secret",
+        screen_cls=EncryptScreen,
+    )
+)

@@ -3,6 +3,7 @@ from typing import Any
 from textual.app import App
 
 from ..config import NixConfig
+from . import screens
 from .screens.main_menu import MainMenuScreen
 
 

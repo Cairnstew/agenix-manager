@@ -29,7 +29,17 @@ result-*
 .direnv/
 .vscode/
 .idea/
-.opencode/
+
+# opencode: ignore user-specific state, track shared tools/config
+.opencode/*.json
+.opencode/*.ts
+.opencode/node_modules/
+.opencode/package.json
+.opencode/package-lock.json
+.opencode/skills/
+.opencode/commands/
+!.opencode/tools/
+!.opencode/opencode.json
 *.swp
 *.swo
 *~
