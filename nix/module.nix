@@ -210,7 +210,7 @@ in {
       secretsPath      = toString cfg.secretsPath;
       secretsNixPath   = "/etc/agenix/secrets.nix";
       keysSnapshotPath = "/etc/agenix/keys-snapshot.json";
-      agenixBin        = config.age.ageBin or "${pkgs.agenix}/bin/agenix";
+      agenixBin        = null;
       identities       = cfg.identities;
       keys             = cfg.keyGroups // { all = cfg.keyGroups.systems ++ cfg.keyGroups.users ++ cfg.keyGroups.other; };
       secrets = map (s: {
