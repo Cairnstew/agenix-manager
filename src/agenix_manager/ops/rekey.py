@@ -10,6 +10,7 @@ class RekeyOp(BaseOp):
     """Re-encrypt one or more secrets with the current key set."""
 
     def rekey(self, secrets: list[SecretDef]) -> None:
+        agenix = self._find_agenix()
         try:
             write_secrets_nix(self.cfg)
         except OSError as e:
@@ -19,7 +20,11 @@ class RekeyOp(BaseOp):
                 returncode=1,
             ) from e
         names = [f"{s.name}.age" for s in secrets]
-        self._run(["agenix", "--rekey"] + names, cwd=self.cfg.secrets_path)
+        self._run(
+            [agenix, "--rekey"] + names,
+            cwd=self.cfg.secrets_path,
+            env=self._rules_env,
+        )
 
 
 # ── module-level convenience API ──────────────────────────────────────

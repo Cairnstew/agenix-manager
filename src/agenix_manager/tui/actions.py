@@ -82,7 +82,7 @@ class EncryptAction(ActionHandler):
                 encrypt_secret(self.cfg, secret)
             self.screen._notify_ok(f"Edited existing secret '{secret.name}.age'")
         except AgenixOpError as e:
-            self.screen._notify_err(f"Encrypt failed: {e.stderr}")
+            self.screen._notify_err(str(e))
             return
         self.refresh()
 
@@ -95,7 +95,7 @@ class DecryptAction(ActionHandler):
         try:
             plaintext = decrypt_secret(self.cfg, secret)
         except AgenixOpError as e:
-            self.screen._notify_err(f"Decrypt failed: {e.stderr}")
+            self.screen._notify_err(str(e))
             return
         self.screen.app.push_screen(
             DecryptViewScreen(plaintext=plaintext, secret_name=secret.name)
@@ -119,7 +119,7 @@ class RekeyAction(ActionHandler):
             rekey_secrets(self.cfg, [secret])
             self.screen._notify_ok(f"Rekeyed '{secret.name}.age'")
         except AgenixOpError as e:
-            self.screen._notify_err(f"Rekey failed: {e.stderr}")
+            self.screen._notify_err(str(e))
             return
         self.refresh()
 

@@ -38,11 +38,17 @@ class TestRekey:
         secrets_dir = Path(sample_config_with_tmp.secrets_path)
         secrets_dir.mkdir(parents=True, exist_ok=True)
 
-        with patch("subprocess.run") as mock_run:
+        with (
+            patch("subprocess.run") as mock_run,
+            patch(
+                "agenix_manager.ops.base.BaseOp._find_agenix",
+                return_value="/fake/bin/agenix",
+            ),
+        ):
             mock_run.return_value.stdout = ""
             rekey_secrets(sample_config_with_tmp, sample_config_with_tmp.secrets)
             call_args = mock_run.call_args[0][0]
-            assert call_args[0] == "agenix"
+            assert call_args[0] == "/fake/bin/agenix"
             assert call_args[1] == "--rekey"
             assert "github-token.age" in call_args
             assert "db-password.age" in call_args
@@ -51,10 +57,18 @@ class TestRekey:
         secrets_dir = Path(sample_config_with_tmp.secrets_path)
         secrets_dir.mkdir(parents=True, exist_ok=True)
 
-        with patch("subprocess.run") as mock_run:
+        with (
+            patch("subprocess.run") as mock_run,
+            patch(
+                "agenix_manager.ops.base.BaseOp._find_agenix",
+                return_value="/fake/bin/agenix",
+            ),
+        ):
             mock_run.return_value.stdout = ""
             rekey_secrets(sample_config_with_tmp, [sample_config_with_tmp.secrets[0]])
             call_args = mock_run.call_args[0][0]
+            assert "/fake/bin/agenix" in call_args
+            assert "--rekey" in call_args
             assert "github-token.age" in call_args
             assert "db-password.age" not in call_args
 
