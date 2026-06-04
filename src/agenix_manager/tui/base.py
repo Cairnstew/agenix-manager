@@ -87,12 +87,10 @@ class TableScreen(BaseScreen):
 
     def _get_selected_secret(self) -> SecretDef | None:
         row_index = self.table.cursor_row
-        if row_index is None:
+        if row_index is None or not self.table.is_valid_row_index(row_index):
             self.notify("No secret selected", severity="warning")
             return None
         row = self.table.get_row_at(row_index)
-        if row is None:
-            return None
         name = str(row[0])
         return self._resolve_secret(name)
 

@@ -18,12 +18,10 @@ class RemoveScreen(MutateTableScreen):
 
     async def action_delete_selected(self) -> None:
         row_index = self.table.cursor_row
-        if row_index is None:
+        if row_index is None or not self.table.is_valid_row_index(row_index):
             self.notify("No secret selected", severity="warning")
             return
         row = self.table.get_row_at(row_index)
-        if row is None:
-            return
         name = str(row[0])
 
         age_path = Path(self.cfg.secrets_path) / f"{name}.age"
