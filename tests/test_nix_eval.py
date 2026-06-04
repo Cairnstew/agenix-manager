@@ -41,6 +41,7 @@ class TestNixEvalSimple:
             "identities",
             "keys",
             "secrets",
+            "agenixBin",
         }
 
     def test_parses_as_valid_nix_config(self):
@@ -189,6 +190,7 @@ class TestNixEvalMissingManifest:
             "identities",
             "keys",
             "secrets",
+            "agenixBin",
         }
 
 
