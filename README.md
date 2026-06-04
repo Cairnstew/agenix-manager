@@ -6,6 +6,16 @@ Secrets are declared in a **JSON manifest file** (`secrets/secrets-manifest.json
 managed by the CLI — never in Nix directly. The Nix module reads the manifest at
 eval time and wires up `config.age.secrets.*` automatically.
 
+## Features
+
+- **Declarative** — secrets declared in a JSON manifest, never in Nix
+- **Multi-key** — encrypt secrets for host keys, user keys, CI keys, or any
+  combination via named key groups
+- **Automatic wiring** — `config.age.secrets.*` generated from the manifest
+- **TUI** — status overview, create/edit/decrypt/rekey/remove operations via
+  keyboard-driven interface
+- **CLI** — headless operation for scripting and CI
+
 ## NixOS module
 
 ```nix
@@ -39,8 +49,8 @@ eval time and wires up `config.age.secrets.*` automatically.
 }
 ```
 
-The CLI is automatically added to `environment.systemPackages` — no overlay or
-extra config needed. Just import the module and enable.
+The module automatically adds both the `agenix-manager` CLI and `age` to
+`environment.systemPackages` — no extra config needed. Just import and enable.
 
 Secrets are **not** declared in Nix — they live in the manifest. After adding
 your first secret (see CLI section below), reference them from other modules
@@ -96,8 +106,7 @@ directly from the flake:
 sudo nix run github:Cairnstew/agenix-manager -- new --name my-secret --scope users --stdin <<< "myvalue"
 ```
 
-If you already have the CLI installed (e.g. via the Home Manager module or
-`environment.systemPackages`):
+If you already have the CLI installed:
 
 ```bash
 agenix-manager new --name my-secret --scope users --stdin <<< "myvalue"
@@ -109,14 +118,16 @@ Interactive wizard (recommended for first use):
 sudo nix run github:Cairnstew/agenix-manager -- new
 ```
 
-Then commit the manifest and `.age` file, and rebuild:
+Then commit everything and rebuild:
 
 ```bash
 git add secrets/
 nixos-rebuild switch --flake .#myhost
 ```
 
-See CLI section for all options.
+The repository includes a `.gitattributes` marking `*.age` files as binary
+(they change entirely on every rekey due to the random nonce) and a
+`secrets/.gitkeep` so the directory is present on clone.
 
 ### Key groups and scopes
 
@@ -171,13 +182,18 @@ Creates a new secret — the primary entry point for secret management.
 agenix-manager new
 ```
 
-Walks through three steps:
-1. Enter secret name (validated: alphanumeric, hyphens, underscores)
-2. Select key scope from available groups (with member counts)
-3. Set owner, group, mode (defaults: root, root, 0400)
+A 4-step fully keyboard-driven wizard:
 
-On completion: writes the manifest, regenerates `secrets.nix`, opens `$EDITOR`
-via `agenix -e` for the secret value.
+1. **Secret name** — type a name, `Enter` to confirm
+2. **Key scope** — arrow keys to navigate, `Space` to toggle, `Ctrl+Enter` to
+   confirm (selecting multiple scopes encrypts for all of them)
+3. **Permissions** — `Tab` between owner/group/mode fields, `Enter` to confirm
+4. **Secret value** — type or paste multi-line content, `Ctrl+Enter` to create
+
+`Esc` goes back one step at any point.
+
+On completion: writes the manifest, regenerates `secrets.nix`, encrypts the
+value, and prints a reminder to `git add secrets/`.
 
 **Non-interactive** (all flags provided):
 
@@ -200,9 +216,6 @@ Options:
 | `--mode` | `0400` | File mode (octal) |
 | `--stdin` | — | Read plaintext from stdin instead of opening editor |
 
-After creation, a reminder is printed to `git add` the manifest and `.age` file
-before rebuilding.
-
 ### Activation and cache
 
 Every `nixos-rebuild switch`:
@@ -214,20 +227,24 @@ Every `nixos-rebuild switch`:
 The CLI reads from the cache on startup — instant, no `nix eval` overhead.
 Falls back to `nix eval` if the cache is missing (e.g. before first activation).
 
-### TUI screens
+### TUI
 
-| Screen | Binding | Description |
+The main interface is a single **status screen** showing key group counts and the
+secret table (name, scope, status, owner, mode). All operations are available via
+hotkeys — no menu navigation.
+
+| Key | Operation | Description |
 |---|---|---|
-| **Status** | — | Key group counts + secret table (scope, status, owner, mode) |
-| **New secret** | — | 3-step wizard (name, scope, permissions) |
-| **Encrypt** | `e` | Re-encrypt/edit an existing secret via `agenix -e` |
-| **Decrypt** | `d` | Shows plaintext in ephemeral viewer (never written to disk) |
-| **Rekey** | `r` | Shows key diff confirmation before re-encrypting |
-| **Remove** | `d` | Deletes `.age` file (irreversible) |
+| `n` | **New** | Opens the 4-step wizard to create a secret |
+| `e` | **Encrypt** | Re-encrypt the selected secret via `$EDITOR` |
+| `d` | **Decrypt** | Shows decrypted plaintext in an ephemeral viewer |
+| `r` | **Rekey** | Shows key diff confirmation, then re-encrypts with current keys |
+| `R` | **Remove** | Deletes the `.age` file and removes the secret from the manifest |
+| `q` | **Quit** | Exit the TUI |
 
-The rekey screen reads the on-disk keys snapshot to show current recipients vs
-new recipients, highlighting added (green) and removed (red) keys. If no keys
-changed, it warns and asks for confirmation anyway.
+The status screen reads from a cache file (`/etc/agenix/agenix-manager-cache.json`)
+on startup for instant loading. If the cache is missing, it falls back to
+`nix eval` to compute the config.
 
 ## Development
 

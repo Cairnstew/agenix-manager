@@ -32,6 +32,12 @@ If `secretsPath` or `flakeRoot` are absolute paths outside the flake, add
 The TUI suspends Textual, shells out, then resumes. Textual's `suspend()`
 context manager handles this correctly.
 
+### `age` binary is auto-added to system packages
+The NixOS and Home Manager modules automatically add `pkgs.age` to
+`environment.systemPackages` / `home.packages` when enabled. Users no
+longer need to add it manually. The `agenix` binary comes from the
+separate agenix flake input (`agenix.nixosModules.default`).
+
 ### Rekey requires all identity keys to be present
 `agenix --rekey` needs at least one identity that can decrypt each existing
 secret. If rekeying on a new host, ensure you have access to at least one
