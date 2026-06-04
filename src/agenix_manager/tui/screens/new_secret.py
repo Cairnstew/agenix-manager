@@ -29,7 +29,7 @@ class NewSecretScreen(WizardScreen):
 
     BINDINGS = [
         Binding("escape", "go_back_or_exit", "Back"),
-        Binding("ctrl+enter", "create_secret", "Create"),
+        Binding("ctrl+enter", "confirm_step", "Confirm"),
     ]
 
     CSS = """
@@ -134,7 +134,7 @@ class NewSecretScreen(WizardScreen):
                 "Select which key group should be able to decrypt this secret"
             )
             hint.update(
-                "[dim][Space][/dim] to select  [dim][Enter][/dim] to continue  [dim][Esc][/dim] to go back"
+                "[dim][Space][/dim] to select  [dim][Ctrl+Enter][/dim] to continue  [dim][Esc][/dim] to go back"
             )
             if not self._scope_list_populated:
                 self._scope_list_populated = True
@@ -189,15 +189,18 @@ class NewSecretScreen(WizardScreen):
                 self.step = 4
                 self._render_step(4)
 
-    def on_selection_list_selected(self, event: SelectionList.Selected) -> None:
-        if self.step != 2:
-            return
-        if self._validate_step(2):
-            self.step = 3
-            self._render_step(3)
-
-    def action_create_secret(self) -> None:
-        self.run_worker(self._on_finish())
+    def action_confirm_step(self) -> None:
+        if self.step == 2:
+            if self._validate_step(2):
+                self.step = 3
+                self._render_step(3)
+        elif self.step == 4:
+            self.run_worker(self._on_finish())
+        else:
+            self.notify(
+                "Press Enter on the input field to continue",
+                severity="information",
+            )
 
     def _validate_step(self, step: int) -> bool:
         if step == 1:
