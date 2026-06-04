@@ -22,7 +22,10 @@ class TestEncryptFromStdin:
             keys=["ssh-ed25519 AAAA...key1", "ssh-ed25519 AAAA...key2"],
             file="/secrets/test.age",
         )
-        with patch("subprocess.run") as mock_run:
+        with (
+            patch("agenix_manager.ops.base.shutil.which", return_value="age"),
+            patch("subprocess.run") as mock_run,
+        ):
             encrypt_secret_from_stdin(cfg, secret, "myplaintext")
             call_args = mock_run.call_args[0][0]
             assert call_args[0] == "age"
@@ -47,7 +50,10 @@ class TestEncryptFromStdin:
             keys=["ssh-ed25519 AAAA...key1"],
             file="/secrets/test.age",
         )
-        with patch("subprocess.run") as mock_run:
+        with (
+            patch("agenix_manager.ops.base.shutil.which", return_value="age"),
+            patch("subprocess.run") as mock_run,
+        ):
             encrypt_secret_from_stdin(cfg, secret, "myplaintext")
             assert mock_run.call_args[1]["input"] == "myplaintext"
             assert mock_run.call_args[1]["text"] is True
@@ -85,7 +91,10 @@ class TestEncryptFromStdin:
             keys=["ssh-ed25519 AAAA...onlykey"],
             file="/secrets/single.age",
         )
-        with patch("subprocess.run") as mock_run:
+        with (
+            patch("agenix_manager.ops.base.shutil.which", return_value="age"),
+            patch("subprocess.run") as mock_run,
+        ):
             encrypt_secret_from_stdin(cfg, secret, "data")
             cmd = mock_run.call_args[0][0]
             assert cmd.count("-r") == 1

@@ -11,11 +11,15 @@ from .errors import AgenixOpError
 _AGENIX_CANDIDATES = [
     "/run/current-system/sw/bin/agenix",
     "/nix/var/nix/profiles/default/bin/agenix",
+    "/nix/var/nix/profiles/system/sw/bin/agenix",
+    "/run/wrappers/bin/agenix",
 ]
 
 _AGE_CANDIDATES = [
     "/run/current-system/sw/bin/age",
     "/nix/var/nix/profiles/default/bin/age",
+    "/nix/var/nix/profiles/system/sw/bin/age",
+    "/run/wrappers/bin/age",
 ]
 
 
@@ -34,22 +38,55 @@ class BaseOp:
     def _find_agenix(self) -> str:
         if self.cfg.agenix_bin:
             return self.cfg.agenix_bin
+
+        candidates = list(_AGENIX_CANDIDATES)
+        sudo_user = os.environ.get("SUDO_USER")
+        if sudo_user:
+            candidates.insert(0, f"/home/{sudo_user}/.nix-profile/bin/agenix")
+            candidates.insert(0, f"/etc/profiles/per-user/{sudo_user}/bin/agenix")
+
         found = shutil.which("agenix")
         if found:
             return found
-        for candidate in _AGENIX_CANDIDATES:
+
+        for candidate in candidates:
             if Path(candidate).exists():
                 return candidate
-        return "agenix"
+
+        raise AgenixOpError(
+            command="agenix --help",
+            stderr=(
+                "agenix binary not found.\n"
+                "Install it by adding to your NixOS configuration:\n"
+                "  environment.systemPackages = [ pkgs.agenix ];\n"
+            ),
+            returncode=1,
+        )
 
     def _find_age(self) -> str:
+        candidates = list(_AGE_CANDIDATES)
+        sudo_user = os.environ.get("SUDO_USER")
+        if sudo_user:
+            candidates.insert(0, f"/home/{sudo_user}/.nix-profile/bin/age")
+            candidates.insert(0, f"/etc/profiles/per-user/{sudo_user}/bin/age")
+
         found = shutil.which("age")
         if found:
             return found
-        for candidate in _AGE_CANDIDATES:
+
+        for candidate in candidates:
             if Path(candidate).exists():
                 return candidate
-        return "age"
+
+        raise AgenixOpError(
+            command="age --help",
+            stderr=(
+                "age binary not found.\n"
+                "Install it by adding to your NixOS configuration:\n"
+                "  environment.systemPackages = [ pkgs.age ];\n"
+            ),
+            returncode=1,
+        )
 
     # ── subprocess helper ─────────────────────────────────────────────
 
@@ -60,6 +97,12 @@ class BaseOp:
         try:
             result = subprocess.run(cmd, check=True, text=True, **kwargs)  # type: ignore[arg-type]
             return result  # type: ignore[return-value]
+        except FileNotFoundError as e:
+            raise AgenixOpError(
+                command=" ".join(cmd),
+                stderr=f"Binary not found: {e.filename}",
+                returncode=255,
+            ) from e
         except subprocess.CalledProcessError as e:
             raise AgenixOpError(
                 command=" ".join(e.cmd),
