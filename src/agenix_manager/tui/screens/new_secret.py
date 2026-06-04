@@ -22,7 +22,6 @@ from ...ops.encrypt import encrypt_secret_from_stdin
 from ...ops.errors import AgenixOpError
 from ...secrets_nix import write_secrets_nix
 from ..base import WizardScreen
-from ..navigation import ScreenEntry, ScreenRegistry
 
 
 class NewSecretScreen(WizardScreen):
@@ -283,6 +282,7 @@ class NewSecretScreen(WizardScreen):
                 self.manifest, self.cfg.keys, self.cfg.secrets_path
             )
             updated_cfg = self.cfg.model_copy(update={"secrets": resolved})
+            self.app.cfg = updated_cfg
             write_secrets_nix(updated_cfg)
 
             secret = next(s for s in resolved if s.name == self.secret_name)
@@ -294,19 +294,11 @@ class NewSecretScreen(WizardScreen):
                 severity="information",
                 timeout=10,
             )
-            self.app.pop_screen()
+            self.dismiss(True)
         except ManifestError as e:
             self.notify(f"Manifest error: {e}", severity="error")
         except AgenixOpError as e:
             self.notify(f"Encryption failed: {e.stderr}", severity="error")
 
 
-ScreenRegistry.register(
-    ScreenEntry(
-        id="new-secret",
-        label="New secret",
-        description="Create a new secret",
-        screen_cls=NewSecretScreen,
-        kwargs_factory=lambda cfg: {"manifest_path": find_manifest_path(cfg.secrets_path)},
-    )
-)
+

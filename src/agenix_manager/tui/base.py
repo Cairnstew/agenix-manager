@@ -117,6 +117,7 @@ class MutateTableScreen(TableScreen):
     def _sync(self) -> None:
         resolved = resolve_all(self.manifest, self.cfg.keys, self.cfg.secrets_path)
         self.cfg = self.cfg.model_copy(update={"secrets": resolved})
+        self.app.cfg = self.cfg
         write_secrets_nix(self.cfg)
 
 
