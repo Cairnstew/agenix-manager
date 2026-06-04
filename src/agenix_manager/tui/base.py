@@ -186,6 +186,7 @@ class ConfirmModalScreen(ModalScreen[bool]):
     BINDINGS = [
         Binding("y", "confirm", "Yes"),
         Binding("n", "cancel", "No"),
+        Binding("enter", "confirm", "Yes"),
         Binding("escape", "cancel", "Cancel"),
     ]
 

@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from textual import events
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
-from textual.widgets import Button, Input, Label, SelectionList, Static, TextArea
+from textual.binding import Binding
+from textual.containers import Vertical
+from textual.widgets import Input, Label, SelectionList, Static, TextArea
 
 from ...config import NixConfig
 from ...manifest import (
@@ -27,14 +27,18 @@ from ..base import WizardScreen
 class NewSecretScreen(WizardScreen):
     total_steps = 4
 
+    BINDINGS = [
+        Binding("escape", "go_back_or_exit", "Back"),
+        Binding("ctrl+enter", "create_secret", "Create"),
+    ]
+
     CSS = """
     .hidden { display: none; }
     .error { color: $error; }
     #wizard-container { padding: 1 2; }
     #step-title { padding-bottom: 0; }
     #step-description { padding-bottom: 1; }
-    #button-row { padding-top: 1; align: right middle; }
-    #button-row Button { margin: 0 1; min-width: 12; text-align: center; }
+    #step-hint { padding-top: 1; text-align: center; color: $text-muted; }
     Input { margin-bottom: 0; }
     .field-label { padding-top: 1; text-style: bold; }
     .field-hint { color: $text-muted; padding-bottom: 1; }
@@ -98,11 +102,7 @@ class NewSecretScreen(WizardScreen):
                     "Enter the secret value. Supports multi-line content (SSH keys, configs, etc.).",
                     classes="field-hint",
                 )
-            with Horizontal(id="button-row"):
-                yield Button("Cancel", id="cancel-btn", variant="default")
-                yield Button("Next", id="next-btn", variant="primary", classes="hidden")
-                yield Button("Back", id="back-btn", variant="default", classes="hidden")
-                yield Button("Create", id="create-btn", variant="success", classes="hidden")
+            yield Static("", id="step-hint")
 
     def on_mount(self) -> None:
         self._render_step(1)
@@ -110,13 +110,11 @@ class NewSecretScreen(WizardScreen):
     def _render_step(self, step: int) -> None:
         title = self.query_one("#step-title", Static)
         desc = self.query_one("#step-description", Static)
+        hint = self.query_one("#step-hint", Static)
         name_section = self.query_one("#name-section", Vertical)
         scope_section = self.query_one("#scope-section", Vertical)
         perms_section = self.query_one("#perms-section", Vertical)
         secret_value_section = self.query_one("#secret-value-section", Vertical)
-        next_btn = self.query_one("#next-btn", Button)
-        back_btn = self.query_one("#back-btn", Button)
-        create_btn = self.query_one("#create-btn", Button)
 
         name_section.classes = "hidden" if step != 1 else ""
         scope_section.classes = "hidden" if step != 2 else ""
@@ -128,14 +126,15 @@ class NewSecretScreen(WizardScreen):
             desc.update(
                 "Enter a name for the new secret (alphanumeric, hyphens, underscores only)"
             )
-            next_btn.classes = ""
-            back_btn.classes = "hidden"
-            create_btn.classes = "hidden"
+            hint.update("[dim][Enter][/dim] to continue  [dim][Esc][/dim] to exit")
             self.query_one("#name-input", Input).focus()
         elif step == 2:
             title.update("[bold]Step 2/4: Key scope[/]")
             desc.update(
                 "Select which key group should be able to decrypt this secret"
+            )
+            hint.update(
+                "[dim][Space][/dim] to select  [dim][Enter][/dim] to continue  [dim][Esc][/dim] to go back"
             )
             if not self._scope_list_populated:
                 self._scope_list_populated = True
@@ -164,24 +163,41 @@ class NewSecretScreen(WizardScreen):
                         (label, scope_name, scope_name == self.secret_scope)
                     )
                 selection_list.add_options(options)
-            next_btn.classes = ""
-            back_btn.classes = ""
-            create_btn.classes = "hidden"
             self.query_one("#scope-list", SelectionList).focus()
         elif step == 3:
             title.update("[bold]Step 3/4: Permissions[/]")
             desc.update("Set file owner, group, and mode for the decrypted secret")
-            next_btn.classes = ""
-            back_btn.classes = ""
-            create_btn.classes = "hidden"
+            hint.update(
+                "[dim][Tab][/dim] between fields  [dim][Enter][/dim] to continue  [dim][Esc][/dim] to go back"
+            )
             self.query_one("#owner-input", Input).focus()
         elif step == 4:
             title.update("[bold]Step 4/4: Secret value[/]")
             desc.update("Enter the secret value (paste or type the content)")
-            next_btn.classes = "hidden"
-            back_btn.classes = ""
-            create_btn.classes = ""
+            hint.update(
+                "[dim][Ctrl+Enter][/dim] to create  [dim][Esc][/dim] to go back"
+            )
             self.query_one("#secret-value-input", TextArea).focus()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id == "name-input" and self.step == 1:
+            if self._validate_step(1):
+                self.step = 2
+                self._render_step(2)
+        elif event.input.id in ("owner-input", "group-input", "mode-input") and self.step == 3:
+            if self._validate_step(3):
+                self.step = 4
+                self._render_step(4)
+
+    def on_selection_list_selected(self, event: SelectionList.Selected) -> None:
+        if self.step != 2:
+            return
+        if self._validate_step(2):
+            self.step = 3
+            self._render_step(3)
+
+    def action_create_secret(self) -> None:
+        self.run_worker(self._on_finish())
 
     def _validate_step(self, step: int) -> bool:
         if step == 1:
@@ -217,29 +233,6 @@ class NewSecretScreen(WizardScreen):
         if any(s.name == name for s in self.manifest.secrets):
             return f"Secret '{name}' already exists in manifest"
         return None
-
-    def on_key(self, event: events.Key) -> None:
-        if event.key in ("left", "right"):
-            focused = self.focused
-            buttons = [b for b in self.query("#button-row Button") if b.display]
-            if focused in buttons:
-                idx = buttons.index(focused)
-                if event.key == "left" and idx > 0:
-                    buttons[idx - 1].focus()
-                    event.stop()
-                elif event.key == "right" and idx < len(buttons) - 1:
-                    buttons[idx + 1].focus()
-                    event.stop()
-
-    async def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "cancel-btn":
-            self.action_go_back_or_exit()
-        elif event.button.id == "next-btn":
-            self.action_advance_or_create()
-        elif event.button.id == "back-btn":
-            self.action_go_back_or_exit()
-        elif event.button.id == "create-btn":
-            await self._on_finish()
 
     async def _on_finish(self) -> None:
         owner_input = self.query_one("#owner-input", Input)
@@ -299,6 +292,3 @@ class NewSecretScreen(WizardScreen):
             self.notify(f"Manifest error: {e}", severity="error")
         except AgenixOpError as e:
             self.notify(f"Encryption failed: {e.stderr}", severity="error")
-
-
-
