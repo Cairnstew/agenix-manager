@@ -97,6 +97,7 @@ class TableScreen(BaseScreen):
         return self._resolve_secret(name)
 
     def _refresh_table(self) -> None:
+        self.table.cfg = self.cfg
         self.table.refresh_data()
 
 
