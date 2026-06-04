@@ -1,9 +1,9 @@
 name: VM Test
 
 on:
-  push:
-    branches: [master]
   pull_request:
+  push:
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       timeout-minutes:

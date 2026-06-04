@@ -168,7 +168,7 @@ in {
 
     age.identityPaths = cfg.identities;
 
-    environment.systemPackages = [ cfg.package ];
+    environment.systemPackages = [ cfg.package pkgs.age ];
 
     agenixManager.secretsNixContent = let
       renderKeyList = keys:
