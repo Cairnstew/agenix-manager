@@ -6,7 +6,7 @@ from typing import Any
 from textual import events
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Button, Input, Label, SelectionList, Static
+from textual.widgets import Button, Input, Label, SelectionList, Static, TextArea
 
 from ...config import NixConfig
 from ...manifest import (
@@ -18,7 +18,7 @@ from ...manifest import (
     resolve_all,
     save_manifest,
 )
-from ...ops.encrypt import encrypt_secret
+from ...ops.encrypt import encrypt_secret_from_stdin
 from ...ops.errors import AgenixOpError
 from ...secrets_nix import write_secrets_nix
 from ..base import WizardScreen
@@ -26,7 +26,7 @@ from ..navigation import ScreenEntry, ScreenRegistry
 
 
 class NewSecretScreen(WizardScreen):
-    total_steps = 3
+    total_steps = 4
 
     CSS = """
     .hidden { display: none; }
@@ -41,6 +41,8 @@ class NewSecretScreen(WizardScreen):
     .field-hint { color: $text-muted; padding-bottom: 1; }
     #scope-list { height: 10; }
     #name-error { padding-bottom: 1; }
+    #secret-value-section { height: 14; }
+    TextArea { height: 8; }
     """
 
     def __init__(self, cfg: NixConfig, manifest_path: Path, **kwargs: Any) -> None:
@@ -90,6 +92,13 @@ class NewSecretScreen(WizardScreen):
                     "File permissions in octal (e.g. 0400 = read-only for owner)",
                     classes="field-hint",
                 )
+            with Vertical(id="secret-value-section", classes="hidden"):
+                yield Label("[b]Secret value[/]", classes="field-label")
+                yield TextArea(id="secret-value-input")
+                yield Label(
+                    "Enter the secret value. Supports multi-line content (SSH keys, configs, etc.).",
+                    classes="field-hint",
+                )
             with Horizontal(id="button-row"):
                 yield Button("Cancel", id="cancel-btn", variant="default")
                 yield Button("Next", id="next-btn", variant="primary", classes="hidden")
@@ -105,6 +114,7 @@ class NewSecretScreen(WizardScreen):
         name_section = self.query_one("#name-section", Vertical)
         scope_section = self.query_one("#scope-section", Vertical)
         perms_section = self.query_one("#perms-section", Vertical)
+        secret_value_section = self.query_one("#secret-value-section", Vertical)
         next_btn = self.query_one("#next-btn", Button)
         back_btn = self.query_one("#back-btn", Button)
         create_btn = self.query_one("#create-btn", Button)
@@ -112,9 +122,10 @@ class NewSecretScreen(WizardScreen):
         name_section.classes = "hidden" if step != 1 else ""
         scope_section.classes = "hidden" if step != 2 else ""
         perms_section.classes = "hidden" if step != 3 else ""
+        secret_value_section.classes = "hidden" if step != 4 else ""
 
         if step == 1:
-            title.update("[bold]Step 1/3: Secret name[/]")
+            title.update("[bold]Step 1/4: Secret name[/]")
             desc.update(
                 "Enter a name for the new secret (alphanumeric, hyphens, underscores only)"
             )
@@ -123,7 +134,7 @@ class NewSecretScreen(WizardScreen):
             create_btn.classes = "hidden"
             self.query_one("#name-input", Input).focus()
         elif step == 2:
-            title.update("[bold]Step 2/3: Key scope[/]")
+            title.update("[bold]Step 2/4: Key scope[/]")
             desc.update(
                 "Select which key group should be able to decrypt this secret"
             )
@@ -159,12 +170,19 @@ class NewSecretScreen(WizardScreen):
             create_btn.classes = "hidden"
             self.query_one("#scope-list", SelectionList).focus()
         elif step == 3:
-            title.update("[bold]Step 3/3: Permissions[/]")
+            title.update("[bold]Step 3/4: Permissions[/]")
             desc.update("Set file owner, group, and mode for the decrypted secret")
+            next_btn.classes = ""
+            back_btn.classes = ""
+            create_btn.classes = "hidden"
+            self.query_one("#owner-input", Input).focus()
+        elif step == 4:
+            title.update("[bold]Step 4/4: Secret value[/]")
+            desc.update("Enter the secret value (paste or type the content)")
             next_btn.classes = "hidden"
             back_btn.classes = ""
             create_btn.classes = ""
-            self.query_one("#owner-input", Input).focus()
+            self.query_one("#secret-value-input", TextArea).focus()
 
     def _validate_step(self, step: int) -> bool:
         if step == 1:
@@ -228,10 +246,16 @@ class NewSecretScreen(WizardScreen):
         owner_input = self.query_one("#owner-input", Input)
         group_input = self.query_one("#group-input", Input)
         mode_input = self.query_one("#mode-input", Input)
+        secret_input = self.query_one("#secret-value-input", TextArea)
 
         owner = owner_input.value.strip() or "root"
         group = group_input.value.strip() or "root"
         mode = mode_input.value.strip() or "0400"
+        plaintext = secret_input.text
+
+        if not plaintext.strip():
+            self.notify("Secret value cannot be empty", severity="warning")
+            return
 
         if not mode.startswith("0") or len(mode) != 4 or not mode.isdigit():
             self.notify(
@@ -263,8 +287,7 @@ class NewSecretScreen(WizardScreen):
 
             secret = next(s for s in resolved if s.name == self.secret_name)
 
-            with self.app.suspend():
-                encrypt_secret(updated_cfg, secret)
+            encrypt_secret_from_stdin(updated_cfg, secret, plaintext)
 
             self.notify(
                 f"[bold green]Secret '{self.secret_name}' created![/]",
