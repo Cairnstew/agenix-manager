@@ -13,7 +13,7 @@ from ..config import (
     load_from_file,
     load_from_nix_eval,
 )
-from ..manifest import Manifest, ManifestError, find_manifest_path, resolve_all
+from ..manifest import Manifest, ManifestError, find_manifest_path, load_manifest, resolve_all
 from ..ops.errors import AgenixOpError
 from ..secrets_nix import write_secrets_nix
 
