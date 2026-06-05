@@ -14,11 +14,11 @@ jobs:
 
       - id: cli
         run: |
-          value=false
-          if grep -Pq '^[a-zA-Z_][a-zA-Z0-9_-]*\s*=' pyproject.toml 2>/dev/null; then
-            value=true
+          has_cli=false
+          if grep -q '^\[project\.scripts\]' pyproject.toml 2>/dev/null; then
+            has_cli=true
           fi
-          echo "value=$value" >> "$GITHUB_OUTPUT"
+          echo "value=$has_cli" >> "$GITHUB_OUTPUT"
 
   build:
     needs: detect
@@ -41,6 +41,8 @@ jobs:
     if: needs.detect.outputs.has_cli == 'true'
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -56,8 +58,6 @@ jobs:
         run: |
           nix develop .#bootstrap --command uv build
           nix develop .#bootstrap --command uv publish
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
 
   github-release:
     needs: [detect, build]
