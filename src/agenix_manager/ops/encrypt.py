@@ -16,10 +16,9 @@ class EncryptOp(BaseOp):
 
     def encrypt(self, secret: SecretDef) -> None:
         agenix = self._find_agenix()
-        cmd = [agenix, "-e"]
+        cmd = [agenix, "-e", f"{secret.name}.age"]
         for i in self.cfg.identities:
             cmd += ["-i", i]
-        cmd.append(f"{secret.name}.age")
         self._run(
             cmd,
             capture=False,
