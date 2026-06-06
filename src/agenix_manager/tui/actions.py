@@ -146,6 +146,34 @@ class RekeyAction(ActionHandler):
         self.refresh()
 
 
+class RekeyAllAction(ActionHandler):
+    def execute(self) -> None:
+        secrets = self.cfg.secrets
+        if not secrets:
+            self.screen._notify_warn("No secrets to rekey")
+            return
+        confirm_screen = GenericConfirmScreen(
+            title="[bold]Rekey all secrets?[/]",
+            message=(
+                f"This will re-encrypt [bold]{len(secrets)}[/] secret(s) "
+                f"with the current key set.\n\n"
+                "[yellow]This action reapplies all current group keys.[/]"
+            ),
+        )
+        self.screen.app.push_screen(confirm_screen, self._on_confirmed)
+
+    def _on_confirmed(self, confirmed: bool | None) -> None:
+        if not confirmed:
+            return
+        try:
+            rekey_secrets(self.cfg, self.cfg.secrets)
+            self.screen._notify_ok("All secrets rekeyed")
+        except AgenixOpError as e:
+            self.screen._notify_err(str(e))
+            return
+        self.refresh()
+
+
 class RemoveAction(ActionHandler):
     def execute(self) -> None:
         secret = self.get_selected_secret()

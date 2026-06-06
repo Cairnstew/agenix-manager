@@ -9,6 +9,7 @@ from ..actions import (
     ImportAction,
     NewSecretAction,
     RekeyAction,
+    RekeyAllAction,
     RemoveAction,
 )
 from ..base import TableScreen
@@ -24,6 +25,7 @@ class StatusScreen(TableScreen):
         Binding("r", "rekey", "Rekey"),
         Binding("R", "remove", "Remove"),
         Binding("i", "import", "Import"),
+        Binding("a", "rekey_all", "Rekey All"),
     ]
 
     def __init__(self, cfg, **kwargs):
@@ -32,6 +34,7 @@ class StatusScreen(TableScreen):
         self._encrypt_action = EncryptAction(self)
         self._decrypt_action = DecryptAction(self)
         self._rekey_action = RekeyAction(self)
+        self._rekey_all_action = RekeyAllAction(self)
         self._remove_action = RemoveAction(self)
         self._import_action = ImportAction(self)
 
@@ -50,6 +53,9 @@ class StatusScreen(TableScreen):
 
     def action_rekey(self) -> None:
         self._rekey_action.execute()
+
+    def action_rekey_all(self) -> None:
+        self._rekey_all_action.execute()
 
     def action_remove(self) -> None:
         self._remove_action.execute()
