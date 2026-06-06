@@ -19,9 +19,8 @@ class RekeyOp(BaseOp):
                 stderr=str(e),
                 returncode=1,
             ) from e
-        names = [f"{s.name}.age" for s in secrets]
         self._run(
-            [agenix, "--rekey"] + names,
+            [agenix, "--rekey"],
             cwd=self.cfg.secrets_path,
             env=self._rules_env,
         )

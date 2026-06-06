@@ -48,12 +48,9 @@ class TestRekey:
             mock_run.return_value.stdout = ""
             rekey_secrets(sample_config_with_tmp, sample_config_with_tmp.secrets)
             call_args = mock_run.call_args[0][0]
-            assert call_args[0] == "/fake/bin/agenix"
-            assert call_args[1] == "--rekey"
-            assert "github-token.age" in call_args
-            assert "db-password.age" in call_args
+            assert call_args == ["/fake/bin/agenix", "--rekey"]
 
-    def test_rekey_subset(self, sample_config_with_tmp):
+    def test_rekey_passes_rules_env(self, sample_config_with_tmp):
         secrets_dir = Path(sample_config_with_tmp.secrets_path)
         secrets_dir.mkdir(parents=True, exist_ok=True)
 
@@ -65,12 +62,10 @@ class TestRekey:
             ),
         ):
             mock_run.return_value.stdout = ""
-            rekey_secrets(sample_config_with_tmp, [sample_config_with_tmp.secrets[0]])
-            call_args = mock_run.call_args[0][0]
-            assert "/fake/bin/agenix" in call_args
-            assert "--rekey" in call_args
-            assert "github-token.age" in call_args
-            assert "db-password.age" not in call_args
+            rekey_secrets(sample_config_with_tmp, sample_config_with_tmp.secrets)
+            call_kwargs = mock_run.call_args[1]
+            assert "env" in call_kwargs
+            assert "RULES" in call_kwargs["env"]
 
 
 class TestRemove:
