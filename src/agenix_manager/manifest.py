@@ -132,6 +132,40 @@ def add_secret(
     return Manifest(version=manifest.version, secrets=[*manifest.secrets, entry])
 
 
+def update_secret(
+    manifest: Manifest,
+    name: str,
+    scope: str | list[str] | None = None,
+    owner: str | None = None,
+    group: str | None = None,
+    mode: str | None = None,
+) -> Manifest:
+    if not any(s.name == name for s in manifest.secrets):
+        entry = ManifestSecretEntry(
+            name=name,
+            scope=scope or "all",
+            owner=owner or "root",
+            group=group or "root",
+            mode=mode or "0400",
+        )
+        return Manifest(version=manifest.version, secrets=[*manifest.secrets, entry])
+    new_secrets: list[ManifestSecretEntry] = []
+    for s in manifest.secrets:
+        if s.name == name:
+            new_secrets.append(
+                ManifestSecretEntry(
+                    name=name,
+                    scope=scope or s.scope,
+                    owner=owner or s.owner,
+                    group=group or s.group,
+                    mode=mode or s.mode,
+                )
+            )
+        else:
+            new_secrets.append(s)
+    return Manifest(version=manifest.version, secrets=new_secrets)
+
+
 def remove_secret(manifest: Manifest, name: str) -> Manifest:
     new_secrets = [s for s in manifest.secrets if s.name != name]
     if len(new_secrets) == len(manifest.secrets):

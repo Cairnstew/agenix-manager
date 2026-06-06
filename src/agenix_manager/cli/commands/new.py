@@ -5,7 +5,7 @@ from pathlib import Path
 
 import click
 
-from ...manifest import add_secret
+from ...manifest import add_secret, remove_secret, update_secret
 from ...ops.encrypt import encrypt_secret, encrypt_secret_from_stdin
 from ...ops.errors import AgenixOpError
 from ..base import ManifestWriteCommand
@@ -20,6 +20,16 @@ from ..base import ManifestWriteCommand
 @click.option(
     "--stdin", is_flag=True, help="Read secret value from stdin instead of editor"
 )
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    help="Overwrite existing secret (delete and recreate)",
+)
+@click.option(
+    "--update",
+    is_flag=True,
+    help="Update existing secret metadata without re-encrypting (or create if new)",
+)
 @click.pass_context
 def new(
     ctx: click.Context,
@@ -29,9 +39,14 @@ def new(
     group: str,
     mode: str,
     stdin: bool,
+    overwrite: bool,
+    update: bool,
 ) -> None:
     """Create a new secret."""
-    NewCommand(ctx).run(name=name, scope=scope, owner=owner, group=group, mode=mode, stdin=stdin)
+    NewCommand(ctx).run(
+        name=name, scope=scope, owner=owner, group=group, mode=mode,
+        stdin=stdin, overwrite=overwrite, update=update,
+    )
 
 
 class NewCommand(ManifestWriteCommand):
@@ -43,10 +58,12 @@ class NewCommand(ManifestWriteCommand):
         group: str = "root",
         mode: str = "0400",
         stdin: bool = False,
+        overwrite: bool = False,
+        update: bool = False,
         **kwargs: object,
     ) -> None:
         if name is not None and scope is not None:
-            self._noninteractive(name, scope, owner, group, mode, stdin)
+            self._noninteractive(name, scope, owner, group, mode, stdin, overwrite, update)
             return
         if sys.stdin.isatty():
             self._tui()
@@ -66,10 +83,12 @@ class NewCommand(ManifestWriteCommand):
         group: str,
         mode: str,
         stdin: bool,
+        overwrite: bool,
+        update: bool,
     ) -> None:
-        if any(s.name == name for s in self.manifest.secrets):
+        if overwrite and update:
             click.echo(
-                f"[agenix-manager] Error: Secret '{name}' already exists in manifest",
+                "[agenix-manager] Error: --overwrite and --update are mutually exclusive",
                 err=True,
             )
             raise click.Abort
@@ -89,9 +108,40 @@ class NewCommand(ManifestWriteCommand):
             )
             raise click.Abort
 
-        self.manifest = add_secret(
-            self.manifest, name=name, scope=scope, owner=owner, group=group, mode=mode
-        )
+        exists = any(s.name == name for s in self.manifest.secrets)
+        verb = "created"
+
+        if exists:
+            if overwrite:
+                verb = "overwritten"
+                age_file = Path(self.cfg.secrets_path) / f"{name}.age"
+                if age_file.exists():
+                    age_file.unlink()
+                self.manifest = remove_secret(self.manifest, name)
+                self.manifest = add_secret(
+                    self.manifest, name=name, scope=scope, owner=owner, group=group, mode=mode
+                )
+            elif update:
+                verb = "updated"
+                self.manifest = update_secret(
+                    self.manifest, name=name, scope=scope, owner=owner, group=group, mode=mode
+                )
+                if not stdin:
+                    self._save_and_sync()
+                    click.echo(f"[agenix-manager] Secret '{name}' {verb}.")
+                    return
+            else:
+                click.echo(
+                    f"[agenix-manager] Error: Secret '{name}' already exists in manifest. "
+                    f"Use --overwrite or --update to modify it.",
+                    err=True,
+                )
+                raise click.Abort
+        else:
+            self.manifest = add_secret(
+                self.manifest, name=name, scope=scope, owner=owner, group=group, mode=mode
+            )
+
         self._save_and_sync()
 
         secret = next(s for s in self.cfg.secrets if s.name == name)
@@ -102,7 +152,7 @@ class NewCommand(ManifestWriteCommand):
         else:
             encrypt_secret(self.cfg, secret)
 
-        click.echo(f"[agenix-manager] Secret '{name}' created.")
+        click.echo(f"[agenix-manager] Secret '{name}' {verb}.")
         click.echo(f"[agenix-manager]   Manifest: {self.manifest_path}")
         click.echo(f"[agenix-manager]   .age file: {secret.file}")
         click.echo(

@@ -18,6 +18,7 @@ from agenix_manager.manifest import (
     resolve_keys,
     resolve_secret_entry,
     save_manifest,
+    update_secret,
 )
 
 
@@ -174,6 +175,56 @@ class TestRemoveSecret:
         manifest = Manifest(secrets=[ManifestSecretEntry(name="a")])
         with pytest.raises(ManifestError, match="not found"):
             remove_secret(manifest, "nonexistent")
+
+
+class TestUpdateSecret:
+    def test_update_existing_metadata(self):
+        manifest = Manifest(secrets=[ManifestSecretEntry(name="a", scope="users")])
+        manifest = update_secret(manifest, name="a", scope="systems", owner="alice")
+        assert len(manifest.secrets) == 1
+        assert manifest.secrets[0].name == "a"
+        assert manifest.secrets[0].scope == "systems"
+        assert manifest.secrets[0].owner == "alice"
+
+    def test_update_no_changes_defaults(self):
+        manifest = Manifest(secrets=[ManifestSecretEntry(name="a", scope="users")])
+        manifest = update_secret(manifest, name="a")
+        assert len(manifest.secrets) == 1
+        assert manifest.secrets[0].name == "a"
+        assert manifest.secrets[0].scope == "users"
+
+    def test_update_preserves_other_secrets(self):
+        manifest = Manifest(
+            secrets=[
+                ManifestSecretEntry(name="a", scope="users"),
+                ManifestSecretEntry(name="b", scope="systems"),
+            ]
+        )
+        manifest = update_secret(manifest, name="a", scope="all", mode="0600")
+        assert len(manifest.secrets) == 2
+        assert manifest.secrets[0].name == "a"
+        assert manifest.secrets[0].scope == "all"
+        assert manifest.secrets[0].mode == "0600"
+        assert manifest.secrets[1].name == "b"
+        assert manifest.secrets[1].scope == "systems"
+
+    def test_update_nonexistent_creates(self):
+        manifest = Manifest(secrets=[])
+        manifest = update_secret(manifest, name="new", scope="users", owner="bob")
+        assert len(manifest.secrets) == 1
+        assert manifest.secrets[0].name == "new"
+        assert manifest.secrets[0].scope == "users"
+        assert manifest.secrets[0].owner == "bob"
+
+    def test_update_nonexistent_uses_defaults(self):
+        manifest = Manifest(secrets=[])
+        manifest = update_secret(manifest, name="new")
+        assert len(manifest.secrets) == 1
+        assert manifest.secrets[0].name == "new"
+        assert manifest.secrets[0].scope == "all"
+        assert manifest.secrets[0].owner == "root"
+        assert manifest.secrets[0].group == "root"
+        assert manifest.secrets[0].mode == "0400"
 
 
 class TestResolveKeys:
