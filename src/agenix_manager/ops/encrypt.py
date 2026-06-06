@@ -18,6 +18,7 @@ class EncryptOp(BaseOp):
         agenix = self._find_agenix()
         self._run(
             [agenix, "-e", f"{secret.name}.age"],
+            capture=False,
             cwd=self.cfg.secrets_path,
             env=self._rules_env,
         )

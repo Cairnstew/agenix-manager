@@ -91,11 +91,20 @@ class BaseOp:
     # ── subprocess helper ─────────────────────────────────────────────
 
     def _run(
-        self, cmd: list[str], **kwargs: object
+        self, cmd: list[str], capture: bool = True, **kwargs: object
     ) -> subprocess.CompletedProcess[str]:
-        """Run *cmd* and wrap any failure in ``AgenixOpError``."""
+        """Run *cmd* and wrap any failure in ``AgenixOpError``.
+
+        When *capture* is ``True`` (default), ``text=True`` is set so that
+        stdout/stderr pipes use string mode.  When *capture* is ``False``
+        the subprocess inherits the parent's terminal (stdin/stdout/stderr
+        are passed through) — use this for interactive commands like
+        ``agenix -e`` that need the TTY.
+        """
+        if capture:
+            kwargs.setdefault("text", True)
         try:
-            result = subprocess.run(cmd, check=True, text=True, **kwargs)  # type: ignore[arg-type]
+            result = subprocess.run(cmd, check=True, **kwargs)  # type: ignore[arg-type]
             return result  # type: ignore[return-value]
         except FileNotFoundError as e:
             raise AgenixOpError(
@@ -104,9 +113,12 @@ class BaseOp:
                 returncode=255,
             ) from e
         except subprocess.CalledProcessError as e:
+            stderr = ""
+            if e.stderr is not None:
+                stderr = e.stderr if isinstance(e.stderr, str) else e.stderr.decode("utf-8", errors="replace")
             raise AgenixOpError(
                 command=" ".join(e.cmd),
-                stderr=e.stderr or "",
+                stderr=stderr,
                 returncode=e.returncode,
             ) from e
 

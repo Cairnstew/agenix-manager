@@ -78,7 +78,21 @@ class EncryptAction(ActionHandler):
         if secret is None:
             return
         try:
-            with self.screen.app.suspend():
+            app = self.screen.app
+            driver = app._driver
+            if driver is not None:
+                # Manually leave alternate screen / restore terminal before
+                # handing control to agenix + $EDITOR, and re-enter after.
+                if hasattr(app, "_suspend_signal"):
+                    app._suspend_signal()
+                driver.suspend_application_mode()
+                try:
+                    encrypt_secret(self.cfg, secret)
+                finally:
+                    driver.resume_application_mode()
+                    if hasattr(app, "_resume_signal"):
+                        app._resume_signal()
+            else:
                 encrypt_secret(self.cfg, secret)
         except KeyboardInterrupt:
             self.screen._notify_warn("Encryption cancelled")

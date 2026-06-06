@@ -29,8 +29,16 @@ If `secretsPath` or `flakeRoot` are absolute paths outside the flake, add
 `--config-file` as fallback.
 
 ### agenix -e opens $EDITOR
-The TUI suspends Textual, shells out, then resumes. Textual's `suspend()`
-context manager handles this correctly.
+The TUI leaves alternate-screen mode, calls `agenix -e` (which launches
+`$EDITOR`), then re-enters alternate-screen mode on return.  The Textual
+driver's ``suspend_application_mode()`` / ``resume_application_mode()``
+methods are used directly (not ``App.suspend()``) to avoid buffering
+issues with the TTY handoff.
+
+**Known limitation:** GUI editors (``EDITOR=code --wait``, ``EDITOR=subl``,
+etc.) may not behave correctly because they detach from the terminal
+before the TUI has a chance to resume.  Only terminal-based editors
+(vim, nano, emacs -nw, hx, etc.) are supported in the TUI edit flow.
 
 ### `age` binary is auto-added to system packages
 The NixOS and Home Manager modules automatically add `pkgs.age` to
