@@ -12,7 +12,7 @@ lib.evalModules {
         enable = true;
         secretsPath = "/secrets";
         manifestPath = manifestPath;
-        keys.systems = [ "ssh-ed25519 AAAA...test" ];
+        keys.groups.systems = [ "ssh-ed25519 AAAA...test" ];
         identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
       };
     })

@@ -93,13 +93,7 @@ class NewCommand(ManifestWriteCommand):
             )
             raise click.Abort
 
-        available_scopes = ["all", "systems", "users", "other"]
-        extra = (
-            (self.cfg.keys.model_extra or {})
-            if hasattr(self.cfg.keys, "model_extra")
-            else {}
-        )
-        available_scopes.extend(extra.keys())
+        available_scopes = list((self.cfg.keys.model_extra or {}).keys())
         if scope not in available_scopes:
             click.echo(
                 f"[agenix-manager] Error: Unknown key scope '{scope}'. "

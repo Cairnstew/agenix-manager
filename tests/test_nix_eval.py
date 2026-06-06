@@ -59,8 +59,8 @@ class TestNixEvalSimple:
         keys = data["keys"]
         assert len(keys["all"]) == 1
         assert keys["all"] == keys["systems"]
-        assert keys["users"] == []
-        assert keys["other"] == []
+        assert "users" not in keys
+        assert "other" not in keys
 
     def test_identities_passthrough(self):
         data = nix_eval("eval-simple.nix")

@@ -2,8 +2,13 @@
 let
   cfg = config.agenixManager;
 
+  # All user-defined groups plus computed "all" = union of all groups
+  computedGroups = cfg.keys.groups // {
+    all = lib.foldl' (acc: g: acc ++ g) [] (builtins.attrValues cfg.keys.groups);
+  };
+
   resolveKeys = scope:
-    if builtins.hasAttr scope cfg.keyGroups then cfg.keyGroups.${scope}
+    if builtins.hasAttr scope computedGroups then computedGroups.${scope}
     else throw "agenixManager: unknown key scope '${scope}'";
 
   _manifestSecrets = let
@@ -35,13 +40,6 @@ let
         Run 'agenix-manager new' to create your first secret,
         or ensure the manifest is committed before nixos-rebuild switch.
       '' [];
-
-  defaultKeyGroups = {
-    systems = cfg.keys.systems;
-    users   = cfg.keys.users;
-    other   = cfg.keys.other;
-    all     = cfg.keys.systems ++ cfg.keys.users ++ cfg.keys.other;
-  };
 
   agenixManagerPackage = pkgs.python3Packages.buildPythonPackage {
     pname = "agenix-manager";
@@ -88,36 +86,19 @@ in {
       '';
     };
 
-    keys = {
-      systems = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [];
-        description = "SSH public keys for NixOS host system identities (ssh_host_ed25519_key.pub content)";
-      };
-      users = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [];
-        description = "SSH public keys for human user identities";
-      };
-      other = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [];
-        description = "SSH public keys for any other identity (CI, hardware tokens, etc.)";
-      };
-    };
-
-    keyGroups = lib.mkOption {
+    keys.groups = lib.mkOption {
       type = lib.types.attrsOf (lib.types.listOf lib.types.str);
-      default = defaultKeyGroups;
-      defaultText = lib.literalMD "`{ systems = cfg.keys.systems; users = cfg.keys.users; other = cfg.keys.other; }`";
+      default = {};
       description = ''
         Named key groups for secret encryption scopes.
-        Built-in groups (systems, users, other) are defined automatically.
-        Additional groups can be added for custom scopes:
+        Each group is a list of SSH public key strings.
+        The "all" group is automatically computed as the union of all groups.
 
         ```
-        agenixManager.keyGroups = {
-          deployment = cfg.keys.systems ++ [ "ssh-ed25519 AAAA..." ];
+        agenixManager.keys.groups = {
+          systems = [ "ssh-ed25519 AAAA..." ];
+          users   = [ "ssh-ed25519 AAAA..." ];
+          deployment = [ "ssh-ed25519 AAAA..." ];
         };
         ```
       '';
@@ -227,7 +208,7 @@ in {
       keysSnapshotPath = "/etc/agenix/keys-snapshot.json";
       agenixBin        = if cfg.agenixPackage != null then "${cfg.agenixPackage}/bin/agenix" else null;
       identities       = cfg.identities;
-      keys             = cfg.keyGroups // { all = cfg.keyGroups.systems ++ cfg.keyGroups.users ++ cfg.keyGroups.other; };
+      keys = computedGroups;
       secrets = map (s: {
         inherit (s) name owner group mode scope keys;
         file  = "${toString cfg.secretsPath}/${s.name}.age";

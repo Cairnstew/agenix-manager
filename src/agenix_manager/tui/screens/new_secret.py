@@ -139,23 +139,16 @@ class NewSecretScreen(WizardScreen):
             if not self._scope_list_populated:
                 self._scope_list_populated = True
                 selection_list = self.query_one("#scope-list", SelectionList)
-                groups = {
-                    "all": (
-                        len(self.cfg.keys.systems)
-                        + len(self.cfg.keys.users)
-                        + len(self.cfg.keys.other)
-                    ),
-                    "systems": len(self.cfg.keys.systems),
-                    "users": len(self.cfg.keys.users),
-                    "other": len(self.cfg.keys.other),
-                }
-                extra = {}
-                if (
-                    hasattr(self.cfg.keys, "model_extra")
-                    and self.cfg.keys.model_extra
-                ):
-                    extra = {k: len(v) for k, v in self.cfg.keys.model_extra.items()}
-                groups.update(extra)
+                extra = (
+                    self.cfg.keys.model_extra
+                    if hasattr(self.cfg.keys, "model_extra")
+                    else {}
+                )
+                groups = (
+                    {k: len(v) for k, v in extra.items()}
+                    if extra
+                    else {}
+                )
                 options = []
                 for scope_name, count in groups.items():
                     label = f"{scope_name}  ({count} key{'s' if count != 1 else ''})"

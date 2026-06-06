@@ -12,10 +12,8 @@ class KeyPanel(Static):
 
     def render(self) -> str:
         k = self.cfg.keys
-        return (
-            f"[bold]Key groups[/bold]\n"
-            f"  systems : {len(k.systems)}\n"
-            f"  users   : {len(k.users)}\n"
-            f"  other   : {len(k.other)}\n"
-            f"  all     : {len(k.all)}\n"
-        )
+        extra = (k.model_extra or {}) if hasattr(k, "model_extra") else {}
+        lines = ["[bold]Key groups[/bold]"]
+        for name in sorted(extra):
+            lines.append(f"  {name.ljust(10)}: {len(extra[name])}")
+        return "\n".join(lines)

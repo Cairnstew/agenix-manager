@@ -36,8 +36,8 @@ let
           enable = true;
           manifestPath = "${testManifest}";
           secretsPath = "/test/secrets";
-          keys.systems = [ "ssh-ed25519 AAAA...testkey" ];
-          keys.users = [ "ssh-ed25519 AAAA...userkey" ];
+          keys.groups.systems = [ "ssh-ed25519 AAAA...testkey" ];
+          keys.groups.users = [ "ssh-ed25519 AAAA...userkey" ];
           identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
           package = pkg;
         };
@@ -90,7 +90,7 @@ let
             enable = true;
             manifestPath = "/nonexistent/manifest.json";
             secretsPath = "/test/secrets";
-            keys.systems = [ "ssh-ed25519 AAAA...testkey" ];
+            keys.groups.systems = [ "ssh-ed25519 AAAA...testkey" ];
             identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
             package = pkg;
           };

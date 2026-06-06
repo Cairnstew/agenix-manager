@@ -36,7 +36,7 @@ in {
       enable = true;
       secretsPath = "/etc/secrets";
       manifestPath = "${manifestFile}";
-      keys.systems = [ hostPubText ];
+      keys.groups.systems = [ hostPubText ];
       identities = [ "/etc/ssh/ssh_host_ed25519_key" ];
     };
 

@@ -12,7 +12,7 @@ lib.evalModules {
         enable = true;
         secretsPath = "/secrets";
         manifestPath = manifestPath;
-        keys.users = [ "ssh-ed25519 AAAA...u" ];
+        keys.groups.users = [ "ssh-ed25519 AAAA...u" ];
       };
     })
   ];

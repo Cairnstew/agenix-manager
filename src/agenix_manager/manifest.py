@@ -53,20 +53,28 @@ class Manifest(BaseModel):
         return v
 
 
+def _all_group_keys(key_groups: KeyGroups) -> list[str]:
+    result: list[str] = []
+    for name, keys in (key_groups.model_extra or {}).items():
+        if name != "all":
+            result.extend(keys)
+    return result
+
+
 def resolve_keys(scope: str | list[str], key_groups: KeyGroups) -> list[str]:
     if isinstance(scope, list):
-        known = {"all", "systems", "users", "other"} | set(key_groups.model_extra or {})
+        known = set(key_groups.model_extra or {})
         if all(s in known for s in scope):
             result: list[str] = []
             for s in scope:
                 if s == "all":
-                    result.extend(key_groups.systems + key_groups.users + key_groups.other)
+                    result.extend(_all_group_keys(key_groups))
                 else:
                     result.extend(getattr(key_groups, s))
             return result
         return scope
     if scope == "all":
-        return key_groups.systems + key_groups.users + key_groups.other
+        return _all_group_keys(key_groups)
     try:
         return getattr(key_groups, scope)  # type: ignore[no-any-return]
     except AttributeError:

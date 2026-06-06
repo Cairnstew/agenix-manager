@@ -43,7 +43,7 @@ in {
       enable = true;
       secretsPath = "/etc/secrets";
       manifestPath = "${manifestFile}";
-      keys.users = [ user1PubText user2PubText ];
+      keys.groups.users = [ user1PubText user2PubText ];
       identities = [
         "/etc/agenix/user1_key"
         "/etc/agenix/user2_key"

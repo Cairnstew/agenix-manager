@@ -38,9 +38,7 @@ class TestNixConfig:
 
     def test_key_groups_defaults(self):
         keys = KeyGroups()
-        assert keys.systems == []
-        assert keys.users == []
-        assert keys.other == []
+        assert not keys.model_extra
 
     def test_key_groups_custom_group(self):
         data = {

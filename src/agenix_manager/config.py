@@ -22,9 +22,6 @@ class SecretDef(BaseModel):
 
 class KeyGroups(BaseModel):
     model_config = ConfigDict(extra="allow")
-    systems: list[str] = Field(default_factory=list)
-    users: list[str] = Field(default_factory=list)
-    other: list[str] = Field(default_factory=list)
 
     def __getattr__(self, name: str) -> list[str]:
         extra = self.__pydantic_extra__ or {}
