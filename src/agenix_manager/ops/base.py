@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import subprocess
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from ..config import NixConfig
 from .errors import AgenixOpError
@@ -58,6 +61,12 @@ class BaseOp:
             candidates.insert(0, f"/etc/profiles/per-user/{sudo_user}/bin/agenix")
         for candidate in candidates:
             if Path(candidate).exists():
+                logger.warning(
+                    "agenix resolved via fallback profile path (%s). "
+                    "Set agenixPackage in your NixOS/home-manager module "
+                    "for a reproducible binary.",
+                    candidate,
+                )
                 return candidate
 
         raise AgenixOpError(
