@@ -19,11 +19,13 @@ class EncryptOp(BaseOp):
         cmd = [agenix, "-e", f"{secret.name}.age"]
         for i in self.cfg.identities:
             cmd += ["-i", i]
+        env = {**self._rules_env}
+        env.setdefault("EDITOR", "nano")
         self._run(
             cmd,
             capture=False,
             cwd=self.cfg.secrets_path,
-            env=self._rules_env,
+            env=env,
         )
 
     def encrypt_from_stdin(self, secret: SecretDef, plaintext: str) -> None:
