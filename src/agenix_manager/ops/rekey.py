@@ -19,8 +19,11 @@ class RekeyOp(BaseOp):
                 stderr=str(e),
                 returncode=1,
             ) from e
+        cmd = [agenix, "--rekey"]
+        for ident in self.cfg.identities:
+            cmd.extend(["-i", ident])
         self._run(
-            [agenix, "--rekey"],
+            cmd,
             cwd=self.cfg.secrets_path,
             env=self._rules_env,
         )

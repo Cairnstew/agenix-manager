@@ -48,7 +48,9 @@ class TestRekey:
             mock_run.return_value.stdout = ""
             rekey_secrets(sample_config_with_tmp, sample_config_with_tmp.secrets)
             call_args = mock_run.call_args[0][0]
-            assert call_args == ["/fake/bin/agenix", "--rekey"]
+            assert call_args[:2] == ["/fake/bin/agenix", "--rekey"]
+            assert "-i" in call_args
+            assert "/etc/ssh/ssh_host_ed25519_key" in call_args
 
     def test_rekey_passes_rules_env(self, sample_config_with_tmp):
         secrets_dir = Path(sample_config_with_tmp.secrets_path)
