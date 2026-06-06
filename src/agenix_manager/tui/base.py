@@ -47,6 +47,9 @@ class BaseScreen(Screen[None]):
     def _notify_ok(self, message: str) -> None:
         self.notify(message, severity="information")
 
+    def _notify_warn(self, message: str) -> None:
+        self.notify(message, severity="warning")
+
     def _notify_err(self, message: str) -> None:
         self.notify(message, severity="error")
 

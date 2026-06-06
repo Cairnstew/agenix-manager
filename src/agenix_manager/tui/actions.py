@@ -80,11 +80,19 @@ class EncryptAction(ActionHandler):
         try:
             with self.screen.app.suspend():
                 encrypt_secret(self.cfg, secret)
-            self.screen._notify_ok(f"Edited existing secret '{secret.name}.age'")
+        except KeyboardInterrupt:
+            self.screen._notify_warn("Encryption cancelled")
         except AgenixOpError as e:
             self.screen._notify_err(str(e))
-            return
-        self.refresh()
+        except Exception as e:
+            self.screen._notify_err(f"Encryption failed: {e}")
+        else:
+            self.screen._notify_ok(f"Edited existing secret '{secret.name}.age'")
+        finally:
+            try:
+                self.refresh()
+            except Exception:
+                pass
 
 
 class DecryptAction(ActionHandler):
