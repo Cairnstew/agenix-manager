@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, agenixPackage ? null, ... }:
 let
   cfg = config.agenixManager;
 
@@ -141,6 +141,21 @@ in {
       description = "The agenix-manager package to install.";
     };
 
+    agenixPackage = lib.mkOption {
+      type = lib.types.nullOr lib.types.package;
+      default = agenixPackage;
+      defaultText = lib.literalMD "The agenix package from the flake input";
+      description = ''
+        The agenix package providing the ``agenix`` binary used by the
+        ``agenix-manager`` CLI for encryption / decryption operations.
+
+        When unset (``null``), the CLI falls back to ``$PATH`` lookup
+        and a set of well-known NixOS paths.  Set this to the agenix
+        package from the agenix flake input to guarantee the binary is
+        found without relying on ``environment.systemPackages``.
+      '';
+    };
+
     cliConfig = lib.mkOption {
       internal = true;
       readOnly = true;
@@ -210,7 +225,7 @@ in {
       secretsPath      = toString cfg.secretsPath;
       secretsNixPath   = "/etc/agenix/secrets.nix";
       keysSnapshotPath = "/etc/agenix/keys-snapshot.json";
-      agenixBin        = null;
+      agenixBin        = if cfg.agenixPackage != null then "${cfg.agenixPackage}/bin/agenix" else null;
       identities       = cfg.identities;
       keys             = cfg.keyGroups // { all = cfg.keyGroups.systems ++ cfg.keyGroups.users ++ cfg.keyGroups.other; };
       secrets = map (s: {

@@ -105,9 +105,15 @@
         agenix-manager = pythonSets.${prev.stdenv.hostPlatform.system}.pythonSet."agenix-manager";
       };
 
-      nixosModules.default = import ./nix/module.nix;
+      nixosModules.default = { pkgs, ... }: {
+        imports = [ ./nix/module.nix ];
+        _module.args.agenixPackage = agenix.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      };
 
-      homeManagerModules.default = import ./nix/home-module.nix;
+      homeManagerModules.default = { pkgs, ... }: {
+        imports = [ ./nix/home-module.nix ];
+        _module.args.agenixPackage = agenix.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      };
 
       checks = forAllSystems (system:
         let

@@ -36,19 +36,26 @@ class BaseOp:
     # ── binary discovery ──────────────────────────────────────────────
 
     def _find_agenix(self) -> str:
+        # 1. AGENIX_BIN env var (set by home-manager module or manually).
+        env_bin = os.environ.get("AGENIX_BIN")
+        if env_bin:
+            return env_bin
+
+        # 2. Config value (written by NixOS module cliConfig cache).
         if self.cfg.agenix_bin:
             return self.cfg.agenix_bin
 
+        # 3. PATH lookup.
+        found = shutil.which("agenix")
+        if found:
+            return found
+
+        # 4. Well-known NixOS / Nix profile paths.
         candidates = list(_AGENIX_CANDIDATES)
         sudo_user = os.environ.get("SUDO_USER")
         if sudo_user:
             candidates.insert(0, f"/home/{sudo_user}/.nix-profile/bin/agenix")
             candidates.insert(0, f"/etc/profiles/per-user/{sudo_user}/bin/agenix")
-
-        found = shutil.which("agenix")
-        if found:
-            return found
-
         for candidate in candidates:
             if Path(candidate).exists():
                 return candidate
@@ -57,8 +64,11 @@ class BaseOp:
             command="agenix --help",
             stderr=(
                 "agenix binary not found.\n"
-                "Install it by adding to your NixOS configuration:\n"
-                "  environment.systemPackages = [ pkgs.agenix ];\n"
+                "Install it via your NixOS configuration:\n"
+                "  1. Add agenix to your flake inputs.\n"
+                "  2. Set agenixManager.agenixPackage = agenix.packages.${pkgs.system}.default;\n"
+                "     (this is automatic when using the flake's nixosModules.default).\n"
+                "Or set the AGENIX_BIN environment variable to the agenix binary path."
             ),
             returncode=1,
         )

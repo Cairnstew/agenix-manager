@@ -18,7 +18,10 @@ let
     in
     pkgs.testers.runNixOSTest {
       name = "agenix-manager-${scenario.name}";
-      nodes.machine = scenario.nodeConfig;
+      nodes.machine = { ... }: {
+        imports = [ scenario.nodeConfig ];
+        _module.args.agenixPackage = agenix.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      };
       testScript = scenario.testScript;
     };
 in
