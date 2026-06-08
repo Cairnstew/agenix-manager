@@ -30,6 +30,7 @@ class TestManifestSecretEntry:
         assert entry.owner == "root"
         assert entry.group == "root"
         assert entry.mode == "0400"
+        assert entry.hosts is None
 
     def test_invalid_name_rejected(self):
         with pytest.raises(Exception):
@@ -45,6 +46,30 @@ class TestManifestSecretEntry:
             scope=["ssh-ed25519 AAAA...key1", "ssh-ed25519 AAAA...key2"],
         )
         assert entry.scope == ["ssh-ed25519 AAAA...key1", "ssh-ed25519 AAAA...key2"]
+
+    def test_hosts_default_none(self):
+        entry = ManifestSecretEntry(name="test")
+        assert entry.hosts is None
+
+    def test_hosts_set(self):
+        entry = ManifestSecretEntry(name="test", hosts=["host1", "host2"])
+        assert entry.hosts == ["host1", "host2"]
+
+    def test_hosts_empty_rejected(self):
+        with pytest.raises(Exception, match="hosts list is empty"):
+            ManifestSecretEntry(name="test", hosts=[])
+
+    def test_hosts_roundtrip_json(self):
+        entry = ManifestSecretEntry(name="test", hosts=["deploy-iso"])
+        dumped = entry.model_dump()
+        assert dumped["hosts"] == ["deploy-iso"]
+        loaded = ManifestSecretEntry.model_validate(dumped)
+        assert loaded.hosts == ["deploy-iso"]
+
+    def test_hosts_none_serializes(self):
+        entry = ManifestSecretEntry(name="test", hosts=None)
+        dumped = entry.model_dump()
+        assert dumped["hosts"] is None
 
 
 class TestManifestModel:
@@ -145,6 +170,7 @@ class TestAddSecret:
         manifest = add_secret(manifest, name="new-secret", scope="users")
         assert len(manifest.secrets) == 1
         assert manifest.secrets[0].name == "new-secret"
+        assert manifest.secrets[0].hosts is None
 
     def test_add_duplicate_rejected(self):
         manifest = Manifest(secrets=[ManifestSecretEntry(name="existing")])
@@ -157,6 +183,17 @@ class TestAddSecret:
         assert len(manifest.secrets) == 2
         assert manifest.secrets[0].name == "a"
         assert manifest.secrets[1].name == "b"
+
+    def test_add_with_hosts(self):
+        manifest = Manifest(secrets=[])
+        manifest = add_secret(manifest, name="hosted", scope="users", hosts=["host1", "host2"])
+        assert len(manifest.secrets) == 1
+        assert manifest.secrets[0].hosts == ["host1", "host2"]
+
+    def test_add_with_hosts_none(self):
+        manifest = Manifest(secrets=[])
+        manifest = add_secret(manifest, name="nohosts", scope="users", hosts=None)
+        assert manifest.secrets[0].hosts is None
 
 
 class TestRemoveSecret:
@@ -225,6 +262,23 @@ class TestUpdateSecret:
         assert manifest.secrets[0].owner == "root"
         assert manifest.secrets[0].group == "root"
         assert manifest.secrets[0].mode == "0400"
+        assert manifest.secrets[0].hosts is None
+
+    def test_update_preserves_hosts(self):
+        manifest = Manifest(secrets=[ManifestSecretEntry(name="a", hosts=["host1"])])
+        manifest = update_secret(manifest, name="a", owner="bob")
+        assert manifest.secrets[0].hosts == ["host1"]
+        assert manifest.secrets[0].owner == "bob"
+
+    def test_update_resets_hosts(self):
+        manifest = Manifest(secrets=[ManifestSecretEntry(name="a", hosts=["host1"])])
+        manifest = update_secret(manifest, name="a", hosts=None)
+        assert manifest.secrets[0].hosts is None
+
+    def test_update_sets_hosts(self):
+        manifest = Manifest(secrets=[ManifestSecretEntry(name="a")])
+        manifest = update_secret(manifest, name="a", hosts=["host1", "host2"])
+        assert manifest.secrets[0].hosts == ["host1", "host2"]
 
 
 class TestResolveKeys:

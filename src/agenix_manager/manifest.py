@@ -9,6 +9,13 @@ from pydantic import BaseModel, field_validator
 from .config import KeyGroups, SecretDef
 
 
+class _UnsetType:
+    pass
+
+
+_UNSET = _UnsetType()
+
+
 class ManifestError(Exception):
     pass
 
@@ -16,6 +23,7 @@ class ManifestError(Exception):
 class ManifestSecretEntry(BaseModel):
     name: str
     scope: str | list[str] = "all"
+    hosts: list[str] | None = None
     owner: str = "root"
     group: str = "root"
     mode: str = "0400"
@@ -32,6 +40,16 @@ class ManifestSecretEntry(BaseModel):
                 "Secret name must be alphanumeric with hyphens/underscores only, no spaces"
             )
         return v.strip()
+
+    @field_validator("hosts")
+    @classmethod
+    def _validate_hosts(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None and len(v) == 0:
+            raise ValueError(
+                "hosts list is empty — secret would never be registered on any host. "
+                "Either omit hosts (all hosts) or provide at least one hostname."
+            )
+        return v
 
     @field_validator("mode")
     @classmethod
@@ -130,13 +148,16 @@ def add_secret(
     manifest: Manifest,
     name: str,
     scope: str | list[str] = "all",
+    hosts: list[str] | None = None,
     owner: str = "root",
     group: str = "root",
     mode: str = "0400",
 ) -> Manifest:
     if any(s.name == name for s in manifest.secrets):
         raise ManifestError(f"Secret '{name}' already exists in manifest")
-    entry = ManifestSecretEntry(name=name, scope=scope, owner=owner, group=group, mode=mode)
+    entry = ManifestSecretEntry(
+        name=name, scope=scope, hosts=hosts, owner=owner, group=group, mode=mode
+    )
     return Manifest(version=manifest.version, secrets=[*manifest.secrets, entry])
 
 
@@ -144,14 +165,22 @@ def update_secret(
     manifest: Manifest,
     name: str,
     scope: str | list[str] | None = None,
+    hosts: list[str] | None | _UnsetType = _UNSET,
     owner: str | None = None,
     group: str | None = None,
     mode: str | None = None,
 ) -> Manifest:
+    resolved_hosts: list[str] | None
+    if isinstance(hosts, _UnsetType):
+        resolved_hosts = _UNSET  # type: ignore[assignment]
+    else:
+        resolved_hosts = hosts
+
     if not any(s.name == name for s in manifest.secrets):
         entry = ManifestSecretEntry(
             name=name,
             scope=scope or "all",
+            hosts=resolved_hosts if not isinstance(resolved_hosts, _UnsetType) else None,
             owner=owner or "root",
             group=group or "root",
             mode=mode or "0400",
@@ -164,6 +193,7 @@ def update_secret(
                 ManifestSecretEntry(
                     name=name,
                     scope=scope or s.scope,
+                    hosts=resolved_hosts if not isinstance(resolved_hosts, _UnsetType) else s.hosts,
                     owner=owner or s.owner,
                     group=group or s.group,
                     mode=mode or s.mode,

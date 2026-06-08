@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "secrets": [
+    { "name": "t1", "scope": "systems" },
+    { "name": "t2", "scope": "users", "owner": "postgres", "group": "postgres" }
+  ]
+}

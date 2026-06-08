@@ -201,3 +201,55 @@ class TestNixEvalErrors:
             "config.system.activationScripts.agenixManagerSecretsNix.text",
         )
         assert "unknown key scope 'nonexistent_scope'" in err
+
+
+class TestNixEvalExcludedSecrets:
+    def test_excluded_secret_removed_from_age_secrets(self):
+        data = nix_eval("eval-excluded-secrets.nix", "config.age.secrets")
+        assert "t1" not in data
+        assert "t2" in data
+
+    def test_excluded_secret_removed_from_cli_config(self):
+        data = nix_eval("eval-excluded-secrets.nix", "config.agenixManager.cliConfig")
+        names = {s["name"] for s in data["secrets"]}
+        assert "t1" not in names
+        assert "t2" in names
+
+    def test_excluded_secret_removed_from_keys_snapshot(self):
+        data = nix_eval(
+            "eval-excluded-secrets.nix",
+            "config.system.activationScripts.agenixManagerSecretsNix.text",
+        )
+        assert "t1" not in data
+        assert "t2" in data
+
+    def test_non_excluded_secret_kept(self):
+        data = nix_eval("eval-excluded-secrets.nix", "config.age.secrets")
+        assert len(data) == 1
+        assert "t2" in data
+
+
+class TestNixEvalHostsFilter:
+    def test_hosts_match_includes_all_secrets(self):
+        data = nix_eval("eval-hosts-filter-match.nix", "config.age.secrets")
+        assert "t1" in data
+        assert "t2" in data
+
+    def test_hosts_mismatch_excludes_secret(self):
+        data = nix_eval("eval-hosts-filter-mismatch.nix", "config.age.secrets")
+        assert "t1" in data
+        assert "t2" not in data
+
+    def test_hosts_mismatch_cli_config(self):
+        data = nix_eval("eval-hosts-filter-mismatch.nix", "config.agenixManager.cliConfig")
+        names = {s["name"] for s in data["secrets"]}
+        assert "t1" in names
+        assert "t2" not in names
+
+
+class TestNixEvalExcludedHostsInteraction:
+    def test_exclude_wins_after_hosts_filter(self):
+        """t2 matches this-host via hosts but is explicitly excluded."""
+        data = nix_eval("eval-excluded-hosts-interaction.nix", "config.age.secrets")
+        assert "t1" in data
+        assert "t2" not in data

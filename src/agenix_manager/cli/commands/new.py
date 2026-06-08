@@ -14,6 +14,7 @@ from ..base import ManifestWriteCommand
 @click.command()
 @click.option("--name", default=None, help="Secret name")
 @click.option("--scope", default=None, help="Key scope (e.g. users, systems, all)")
+@click.option("--hosts", default=None, help="Comma-separated host list (omit for all hosts)")
 @click.option("--owner", default="root", help="File owner")
 @click.option("--group", default="root", help="File group")
 @click.option("--mode", default="0400", help="File mode (octal)")
@@ -35,6 +36,7 @@ def new(
     ctx: click.Context,
     name: str | None,
     scope: str | None,
+    hosts: str | None,
     owner: str,
     group: str,
     mode: str,
@@ -44,7 +46,7 @@ def new(
 ) -> None:
     """Create a new secret."""
     NewCommand(ctx).run(
-        name=name, scope=scope, owner=owner, group=group, mode=mode,
+        name=name, scope=scope, hosts=hosts, owner=owner, group=group, mode=mode,
         stdin=stdin, overwrite=overwrite, update=update,
     )
 
@@ -54,6 +56,7 @@ class NewCommand(ManifestWriteCommand):
         self,
         name: str | None = None,
         scope: str | None = None,
+        hosts: str | None = None,
         owner: str = "root",
         group: str = "root",
         mode: str = "0400",
@@ -63,7 +66,7 @@ class NewCommand(ManifestWriteCommand):
         **kwargs: object,
     ) -> None:
         if name is not None and scope is not None:
-            self._noninteractive(name, scope, owner, group, mode, stdin, overwrite, update)
+            self._noninteractive(name, scope, hosts, owner, group, mode, stdin, overwrite, update)
             return
         if sys.stdin.isatty():
             self._tui()
@@ -79,6 +82,7 @@ class NewCommand(ManifestWriteCommand):
         self,
         name: str,
         scope: str,
+        hosts: str | None,
         owner: str,
         group: str,
         mode: str,
@@ -92,6 +96,12 @@ class NewCommand(ManifestWriteCommand):
                 err=True,
             )
             raise click.Abort
+
+        hosts_list: list[str] | None = None
+        if hosts is not None:
+            hosts_list = [h.strip() for h in hosts.split(",") if h.strip()]
+            if not hosts_list:
+                raise click.UsageError("--hosts requires at least one hostname")
 
         available_scopes = list((self.cfg.keys.model_extra or {}).keys())
         if scope not in available_scopes:
@@ -113,12 +123,16 @@ class NewCommand(ManifestWriteCommand):
                     age_file.unlink()
                 self.manifest = remove_secret(self.manifest, name)
                 self.manifest = add_secret(
-                    self.manifest, name=name, scope=scope, owner=owner, group=group, mode=mode
+                    self.manifest,
+                    name=name, scope=scope, hosts=hosts_list,
+                    owner=owner, group=group, mode=mode,
                 )
             elif update:
                 verb = "updated"
                 self.manifest = update_secret(
-                    self.manifest, name=name, scope=scope, owner=owner, group=group, mode=mode
+                    self.manifest,
+                    name=name, scope=scope, hosts=hosts_list,
+                    owner=owner, group=group, mode=mode,
                 )
                 if not stdin:
                     self._save_and_sync()
@@ -133,7 +147,9 @@ class NewCommand(ManifestWriteCommand):
                 raise click.Abort
         else:
             self.manifest = add_secret(
-                self.manifest, name=name, scope=scope, owner=owner, group=group, mode=mode
+                self.manifest,
+                name=name, scope=scope, hosts=hosts_list,
+                owner=owner, group=group, mode=mode,
             )
 
         self._save_and_sync()

@@ -285,6 +285,76 @@ class TestCliNew:
         assert secrets_nix.exists()
         assert "github-token.age" in secrets_nix.read_text()
 
+    def test_new_with_hosts_flag(self, runner: CliRunner, tmp_path: Path):
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir(parents=True, exist_ok=True)
+        config_file = tmp_path / "config.json"
+        config_file.write_text(
+            json.dumps(
+                {
+                    "secrets_path": str(secrets_dir),
+                    "identities": [],
+                    "keys": {"systems": ["k"], "users": ["u"], "other": [], "all": ["k", "u"]},
+                    "secrets": [],
+                }
+            )
+        )
+        with unittest.mock.patch("subprocess.run") as mock_run:
+            mock_run.return_value.stdout = ""
+            result = runner.invoke(
+                main,
+                [
+                    "--config-file",
+                    str(config_file),
+                    "new",
+                    "--name",
+                    "hosted-secret",
+                    "--scope",
+                    "users",
+                    "--hosts",
+                    "host1, host2",
+                    "--stdin",
+                ],
+                input="data",
+            )
+        assert result.exit_code == 0, f"CLI failed: {result.output} {result.exception}"
+        manifest_path = secrets_dir / "secrets-manifest.json"
+        manifest_data = json.loads(manifest_path.read_text())
+        assert manifest_data["secrets"][0]["hosts"] == ["host1", "host2"]
+
+    def test_new_with_hosts_empty_rejected(self, runner: CliRunner, tmp_path: Path):
+        secrets_dir = tmp_path / "secrets"
+        secrets_dir.mkdir(parents=True, exist_ok=True)
+        config_file = tmp_path / "config.json"
+        config_file.write_text(
+            json.dumps(
+                {
+                    "secrets_path": str(secrets_dir),
+                    "identities": [],
+                    "keys": {"systems": ["k"], "users": ["u"], "other": [], "all": ["k", "u"]},
+                    "secrets": [],
+                }
+            )
+        )
+        result = runner.invoke(
+            main,
+            [
+                "--config-file",
+                str(config_file),
+                "new",
+                "--name",
+                "bad",
+                "--scope",
+                "users",
+                "--hosts",
+                "",
+                "--stdin",
+            ],
+            input="data",
+        )
+        assert result.exit_code != 0
+        assert "requires at least one hostname" in result.output
+
     def test_new_stdin_encrypts_with_age(self, runner: CliRunner, tmp_path: Path):
         secrets_dir = tmp_path / "secrets"
         secrets_dir.mkdir(parents=True, exist_ok=True)
