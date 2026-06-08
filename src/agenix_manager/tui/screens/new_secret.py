@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import socket
 from pathlib import Path
 from typing import Any
 
@@ -303,7 +304,7 @@ class NewSecretScreen(WizardScreen):
             save_manifest(self.manifest_path, self.manifest)
 
             resolved = resolve_all(
-                self.manifest, self.cfg.keys, self.cfg.secrets_path
+                self.manifest, self.cfg.keys, self.cfg.secrets_path, socket.gethostname()
             )
             updated_cfg = self.cfg.model_copy(update={"secrets": resolved})
             self.app.cfg = updated_cfg

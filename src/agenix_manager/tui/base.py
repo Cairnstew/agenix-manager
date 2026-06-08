@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import socket
 from pathlib import Path
 from typing import Any
 
@@ -118,7 +119,7 @@ class MutateTableScreen(TableScreen):
             self.manifest = Manifest(version=1, secrets=[])
 
     def _sync(self) -> None:
-        resolved = resolve_all(self.manifest, self.cfg.keys, self.cfg.secrets_path)
+        resolved = resolve_all(self.manifest, self.cfg.keys, self.cfg.secrets_path, socket.gethostname())
         self.cfg = self.cfg.model_copy(update={"secrets": resolved})
         self.app.cfg = self.cfg
         write_secrets_nix(self.cfg)

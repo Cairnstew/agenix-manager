@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import socket
 from pathlib import Path
 
 import click
@@ -34,7 +35,7 @@ class RemoveCommand(SecretCommand):
             save_manifest(self.manifest_path, self.manifest)
             click.echo(f"[agenix-manager] Removed '{name}' from manifest")
 
-        resolved = resolve_all(self.manifest, self.cfg.keys, self.cfg.secrets_path)
+        resolved = resolve_all(self.manifest, self.cfg.keys, self.cfg.secrets_path, socket.gethostname())
         self.cfg = self.cfg.model_copy(update={"secrets": resolved})
         write_secrets_nix(self.cfg)
         self.app_ctx.cfg = self.cfg

@@ -14,6 +14,7 @@ class SecretDef(BaseModel):
     name: str
     keys: list[str] = Field(default_factory=lambda: ["all"])
     scope: str = "all"
+    hosts: list[str] | None = None
     owner: str = "root"
     group: str = "root"
     mode: str = "0400"

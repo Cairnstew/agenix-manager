@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import socket
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
@@ -206,7 +207,7 @@ class RemoveAction(ActionHandler):
             manifest = load_manifest(manifest_path)
             manifest = remove_secret(manifest, name)
             save_manifest(manifest_path, manifest)
-            resolved = resolve_all(manifest, self.cfg.keys, self.cfg.secrets_path)
+            resolved = resolve_all(manifest, self.cfg.keys, self.cfg.secrets_path, socket.gethostname())
             updated = self.cfg.model_copy(update={"secrets": resolved})
             self.screen.cfg = updated
             self.screen.app.cfg = updated
@@ -249,7 +250,7 @@ class ImportAction(ActionHandler):
                 except ManifestError:
                     continue
             save_manifest(manifest_path, manifest)
-            resolved = resolve_all(manifest, self.cfg.keys, self.cfg.secrets_path)
+            resolved = resolve_all(manifest, self.cfg.keys, self.cfg.secrets_path, socket.gethostname())
             updated = self.cfg.model_copy(update={"secrets": resolved})
             self.screen.cfg = updated
             self.screen.app.cfg = updated

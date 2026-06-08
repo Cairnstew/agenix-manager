@@ -32,9 +32,19 @@ class TestNixConfig:
         assert secret.name == "test-secret"
         assert secret.keys == ["ssh-ed25519 AAAA...u"]
         assert secret.scope == "all"
+        assert secret.hosts is None
         assert secret.owner == "root"
         assert secret.group == "root"
         assert secret.mode == "0400"
+
+    def test_secret_def_with_hosts(self):
+        secret = SecretDef(
+            name="test-secret",
+            keys=["ssh-ed25519 AAAA...u"],
+            hosts=["deploy-iso"],
+            file="/secrets/test-secret.age",
+        )
+        assert secret.hosts == ["deploy-iso"]
 
     def test_key_groups_defaults(self):
         keys = KeyGroups()

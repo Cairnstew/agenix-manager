@@ -108,6 +108,7 @@ def resolve_secret_entry(
         name=entry.name,
         keys=keys,
         scope=scope_str,
+        hosts=entry.hosts,
         owner=entry.owner,
         group=entry.group,
         mode=entry.mode,
@@ -115,8 +116,18 @@ def resolve_secret_entry(
     )
 
 
-def resolve_all(manifest: Manifest, key_groups: KeyGroups, secrets_path: str) -> list[SecretDef]:
-    return [resolve_secret_entry(e, key_groups, secrets_path) for e in manifest.secrets]
+def resolve_all(
+    manifest: Manifest,
+    key_groups: KeyGroups,
+    secrets_path: str,
+    hostname: str | None = None,
+) -> list[SecretDef]:
+    filtered = (
+        e
+        for e in manifest.secrets
+        if hostname is None or e.hosts is None or hostname in e.hosts
+    )
+    return [resolve_secret_entry(e, key_groups, secrets_path) for e in filtered]
 
 
 def load_manifest(path: Path) -> Manifest:

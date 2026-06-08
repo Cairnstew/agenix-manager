@@ -358,6 +358,20 @@ class TestResolveSecretEntry:
         assert secret.keys == ["ssh-ed25519 AAAA...k1"]
         assert secret.scope == "custom"
 
+    def test_resolve_passes_hosts_through(self):
+        kg = KeyGroups(systems=[], users=[], other=[])
+        entry = ManifestSecretEntry(
+            name="hosted", scope="all", hosts=["deploy-iso", "prod"]
+        )
+        secret = resolve_secret_entry(entry, kg, "/secrets")
+        assert secret.hosts == ["deploy-iso", "prod"]
+
+    def test_resolve_hosts_none(self):
+        kg = KeyGroups(systems=[], users=[], other=[])
+        entry = ManifestSecretEntry(name="plain", scope="all")
+        secret = resolve_secret_entry(entry, kg, "/secrets")
+        assert secret.hosts is None
+
 
 class TestResolveAll:
     def test_resolves_multiple(self):
@@ -384,6 +398,54 @@ class TestResolveAll:
         manifest = Manifest(secrets=[])
         secrets = resolve_all(manifest, kg, "/secrets")
         assert secrets == []
+
+    def test_filters_by_hostname(self):
+        kg = KeyGroups(systems=[], users=[], other=[])
+        manifest = Manifest(
+            secrets=[
+                ManifestSecretEntry(name="on-this-host", hosts=["myhost"]),
+                ManifestSecretEntry(name="on-other-host", hosts=["other"]),
+            ]
+        )
+        secrets = resolve_all(manifest, kg, "/secrets", hostname="myhost")
+        assert len(secrets) == 1
+        assert secrets[0].name == "on-this-host"
+
+    def test_returns_all_when_hostname_none(self):
+        kg = KeyGroups(systems=[], users=[], other=[])
+        manifest = Manifest(
+            secrets=[
+                ManifestSecretEntry(name="a", hosts=["h1"]),
+                ManifestSecretEntry(name="b", hosts=["h2"]),
+            ]
+        )
+        secrets = resolve_all(manifest, kg, "/secrets", hostname=None)
+        assert len(secrets) == 2
+
+    def test_returns_all_when_hosts_none(self):
+        kg = KeyGroups(systems=[], users=[], other=[])
+        manifest = Manifest(
+            secrets=[
+                ManifestSecretEntry(name="a"),
+                ManifestSecretEntry(name="b"),
+            ]
+        )
+        secrets = resolve_all(manifest, kg, "/secrets", hostname="myhost")
+        assert len(secrets) == 2
+
+    def test_filters_mixed_hosts_and_hostname(self):
+        kg = KeyGroups(systems=[], users=[], other=[])
+        manifest = Manifest(
+            secrets=[
+                ManifestSecretEntry(name="global"),
+                ManifestSecretEntry(name="specific", hosts=["myhost"]),
+                ManifestSecretEntry(name="other", hosts=["other"]),
+            ]
+        )
+        secrets = resolve_all(manifest, kg, "/secrets", hostname="myhost")
+        assert len(secrets) == 2
+        names = {s.name for s in secrets}
+        assert names == {"global", "specific"}
 
 
 class TestFindManifestPath:

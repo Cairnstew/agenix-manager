@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import socket
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -80,7 +81,7 @@ class ManifestWriteCommand(ManifestCommand):
         Call this after mutating ``self.manifest``.
         """
         save_manifest(self.manifest_path, self.manifest)
-        resolved = resolve_all(self.manifest, self.cfg.keys, self.cfg.secrets_path)
+        resolved = resolve_all(self.manifest, self.cfg.keys, self.cfg.secrets_path, socket.gethostname())
         self.cfg = self.cfg.model_copy(update={"secrets": resolved})
         write_secrets_nix(self.cfg)
         self.app_ctx.cfg = self.cfg

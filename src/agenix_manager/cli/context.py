@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import socket
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -71,7 +72,7 @@ def _populate_from_manifest(cfg: NixConfig) -> tuple[NixConfig, Manifest | None]
         return cfg, None
     try:
         manifest = load_manifest(manifest_path)
-        resolved = resolve_all(manifest, cfg.keys, cfg.secrets_path)
+        resolved = resolve_all(manifest, cfg.keys, cfg.secrets_path, socket.gethostname())
         if resolved:
             cfg = cfg.model_copy(update={"secrets": resolved})
         return cfg, manifest
