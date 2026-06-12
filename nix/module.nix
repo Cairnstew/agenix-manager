@@ -215,6 +215,16 @@ in {
           lib.nameValuePair s.name s.keys
         ) _filteredManifestSecrets))
       );
+      # Read the raw source manifest at eval time so it can be written at
+      # activation time. Uses the unfiltered source so the runtime manifest
+      # contains ALL secrets (not just the current host's subset), matching
+      # what is tracked in the repo. The CLI's _populate_from_manifest()
+      # applies per-host filtering at runtime via resolve_all(hostname).
+      sourceManifestFile =
+        if builtins.pathExists cfg.manifestPath then
+          pkgs.writeText "secrets-manifest.json" (builtins.readFile cfg.manifestPath)
+        else
+          null;
     in {
       text = ''
         echo "[agenixManager] Writing secrets.nix -> /etc/agenix/secrets.nix"
@@ -225,6 +235,11 @@ in {
         cp ${cliConfigFile} /etc/agenix/agenix-manager-cache.json
         cp ${keysSnapshotFile} /etc/agenix/keys-snapshot.json
         chmod 644 /etc/agenix/agenix-manager-cache.json /etc/agenix/keys-snapshot.json
+        ${lib.optionalString (sourceManifestFile != null) ''
+          echo "[agenixManager] Writing secrets manifest -> /etc/agenix/secrets-manifest.json"
+          cp ${sourceManifestFile} /etc/agenix/secrets-manifest.json
+          chmod 644 /etc/agenix/secrets-manifest.json
+        ''}
       '';
       deps = [];
     };
