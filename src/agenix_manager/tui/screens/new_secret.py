@@ -183,7 +183,7 @@ class NewSecretScreen(WizardScreen):
             title.update("[bold]Step 4/5: Secret value[/]")
             desc.update("Enter the secret value (paste or type the content)")
             hint.update(
-                "[dim][Enter][/dim] to continue  [dim][Esc][/dim] to go back"
+                "[dim][Ctrl+Enter][/dim] to continue  [dim][Esc][/dim] to go back"
             )
             self.query_one("#secret-value-input", TextArea).focus()
         elif step == 5:
@@ -205,16 +205,20 @@ class NewSecretScreen(WizardScreen):
             if self._validate_step(3):
                 self.step = 4
                 self._render_step(4)
-        elif event.input.id == "secret-value-input" and self.step == 4:
-            if self._validate_step(4):
-                self.step = 5
-                self._render_step(5)
 
     def action_confirm_step(self) -> None:
         if self.step == 2:
             if self._validate_step(2):
                 self.step = 3
                 self._render_step(3)
+        elif self.step == 3:
+            if self._validate_step(3):
+                self.step = 4
+                self._render_step(4)
+        elif self.step == 4:
+            if self._validate_step(4):
+                self.step = 5
+                self._render_step(5)
         elif self.step == 5:
             self.run_worker(self._on_finish())
         else:
