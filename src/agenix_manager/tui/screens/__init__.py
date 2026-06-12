@@ -10,7 +10,7 @@ from . import (
 )
 from .confirm import GenericConfirmScreen
 from .decrypt_view import DecryptViewScreen
-from .import_screen import ImportConfirmScreen
+from .import_screen import ImportSelectScreen
 from .new_secret import NewSecretScreen
 from .rekey_confirm import RekeyConfirmScreen
 from .status import StatusScreen
@@ -18,7 +18,7 @@ from .status import StatusScreen
 __all__ = [
     "GenericConfirmScreen",
     "DecryptViewScreen",
-    "ImportConfirmScreen",
+    "ImportSelectScreen",
     "NewSecretScreen",
     "RekeyConfirmScreen",
     "StatusScreen",
