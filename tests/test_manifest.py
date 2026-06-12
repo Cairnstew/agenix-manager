@@ -456,3 +456,8 @@ class TestFindManifestPath:
     def test_find_manifest_path_from_path(self):
         path = find_manifest_path(Path("/custom/path"))
         assert path == Path("/custom/path/secrets-manifest.json")
+
+    def test_override_returns_override_not_fallback(self):
+        path = find_manifest_path("/secrets", manifest_path_override="/custom/manifest.json")
+        assert path == Path("/custom/manifest.json")
+        assert path != Path("/secrets/secrets-manifest.json")

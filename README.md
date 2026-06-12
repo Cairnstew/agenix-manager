@@ -157,7 +157,7 @@ sudo nix run github:Cairnstew/agenix-manager -- new
 sudo nix run github:Cairnstew/agenix-manager -- status
 ```
 
-> `sudo` is needed because `agenix-manager` writes to `/etc/agenix/` and
+> `sudo` is needed because `agenix-manager` writes to `/etc/agenix/secrets.nix` and
 > reads from the Nix daemon. If your user is in the `trusted-users` set and
 > has write access to the secrets directory, `sudo` can be omitted.
 

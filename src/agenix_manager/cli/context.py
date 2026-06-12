@@ -106,6 +106,13 @@ def bootstrap(
                 click.echo(msg, err=True)
                 raise click.Abort from e
     cfg = _resolve_secrets_path(cfg)
+    if cfg.manifest_path is None and cfg.secrets_path.startswith("/nix/store/"):
+        click.echo(
+            "[agenix-manager] Warning: secrets_path is a Nix store path — mutating operations "
+            "(new, remove, import) will fail.\n"
+            "  Run from your flake checkout directory, or use --config-file with a writable path.",
+            err=True,
+        )
     if extra_identities:
         cfg = cfg.model_copy(
             update={"identities": cfg.identities + list(extra_identities)}

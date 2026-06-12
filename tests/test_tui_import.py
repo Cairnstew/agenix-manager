@@ -28,7 +28,6 @@ def untracked_files(tmp_path: Path) -> list[Path]:
 def _cfg(secrets_dir: str | Path) -> NixConfig:
     return NixConfig.model_validate({
         "secrets_path": str(secrets_dir),
-        "manifest_path": str(Path(secrets_dir) / "secrets-manifest.json"),
         "identities": ["/etc/ssh/ssh_host_ed25519_key"],
         "keys": {
             "systems": ["ssh-ed25519 AAAA...systemkey"],

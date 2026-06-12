@@ -1,5 +1,18 @@
 # Gotchas
 
+## Migration
+
+### Manifest write target change (v0.1.x → v0.2.0)
+
+The manifest write target changed from `/etc/agenix/secrets-manifest.json` to
+`<secretsPath>/secrets-manifest.json` (your repo directory). The CLI now writes
+directly to the repo file, so changes survive rebuilds without the old
+"re-apply after rebuild" workaround.
+
+If you previously relied on the runtime path, run `agenix-manager sync` once to
+reconcile, then commit the repo manifest. No migration action is needed if you
+always ran `agenix-manager` from your flake checkout.
+
 ## agenix-manager
 
 ### secrets.nix must be git-tracked
