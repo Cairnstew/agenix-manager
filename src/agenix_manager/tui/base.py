@@ -112,7 +112,7 @@ class MutateTableScreen(TableScreen):
 
     def __init__(self, cfg: NixConfig, **kwargs: Any) -> None:
         super().__init__(cfg, **kwargs)
-        self.manifest_path: Path = find_manifest_path(self.cfg.secrets_path)
+        self.manifest_path: Path = find_manifest_path(self.cfg.secrets_path, self.cfg.manifest_path)
         try:
             self.manifest: Manifest = load_manifest(self.manifest_path)
         except ManifestError:

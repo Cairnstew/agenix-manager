@@ -63,7 +63,7 @@ class NewSecretAction(ActionHandler):
     def execute(self) -> None:
         from .screens.new_secret import NewSecretScreen
 
-        manifest_path = find_manifest_path(self.cfg.secrets_path)
+        manifest_path = find_manifest_path(self.cfg.secrets_path, self.cfg.manifest_path)
         screen = NewSecretScreen(cfg=self.cfg, manifest_path=manifest_path)
         self.screen.app.push_screen(screen, self._on_complete)
 
@@ -203,7 +203,7 @@ class RemoveAction(ActionHandler):
             age_path = Path(self.cfg.secrets_path) / f"{name}.age"
             if age_path.exists():
                 age_path.unlink()
-            manifest_path = find_manifest_path(self.cfg.secrets_path)
+            manifest_path = find_manifest_path(self.cfg.secrets_path, self.cfg.manifest_path)
             manifest = load_manifest(manifest_path)
             manifest = remove_secret(manifest, name)
             save_manifest(manifest_path, manifest)
@@ -240,7 +240,7 @@ class ImportAction(ActionHandler):
             return
 
         def _do_import() -> bool:
-            manifest_path = find_manifest_path(self.cfg.secrets_path)
+            manifest_path = find_manifest_path(self.cfg.secrets_path, self.cfg.manifest_path)
             manifest = load_manifest(manifest_path)
             for path in self._pending_untracked:
                 try:

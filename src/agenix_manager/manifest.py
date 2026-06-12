@@ -222,5 +222,10 @@ def remove_secret(manifest: Manifest, name: str) -> Manifest:
     return Manifest(version=manifest.version, secrets=new_secrets)
 
 
-def find_manifest_path(cfg_secrets_path: str | Path) -> Path:
+def find_manifest_path(
+    cfg_secrets_path: str | Path,
+    manifest_path_override: str | Path | None = None,
+) -> Path:
+    if manifest_path_override:
+        return Path(manifest_path_override)
     return Path(cfg_secrets_path) / "secrets-manifest.json"

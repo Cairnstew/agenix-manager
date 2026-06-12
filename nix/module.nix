@@ -232,6 +232,7 @@ in {
     agenixManager.cliConfig = {
       secretsPath      = toString cfg.secretsPath;
       secretsNixPath   = "/etc/agenix/secrets.nix";
+      manifestPath     = "/etc/agenix/secrets-manifest.json";
       keysSnapshotPath = "/etc/agenix/keys-snapshot.json";
       agenixBin        = if cfg.agenixPackage != null then "${cfg.agenixPackage}/bin/agenix" else null;
       identities       = cfg.identities;

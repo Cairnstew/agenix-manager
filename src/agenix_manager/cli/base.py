@@ -39,7 +39,7 @@ class BaseCommand(ABC):
         self.app_ctx: AppContext = ctx.obj
         self.cfg: NixConfig = self.app_ctx.cfg
         self.manifest: Manifest | None = self.app_ctx.manifest
-        self.manifest_path: Path = find_manifest_path(self.cfg.secrets_path)
+        self.manifest_path: Path = find_manifest_path(self.cfg.secrets_path, self.cfg.manifest_path)
 
     @abstractmethod
     def run(self, **kwargs: Any) -> None:

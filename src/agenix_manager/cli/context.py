@@ -67,7 +67,7 @@ def _resolve_secrets_path(cfg: NixConfig) -> NixConfig:
 
 
 def _populate_from_manifest(cfg: NixConfig) -> tuple[NixConfig, Manifest | None]:
-    manifest_path = find_manifest_path(cfg.secrets_path)
+    manifest_path = find_manifest_path(cfg.secrets_path, cfg.manifest_path)
     if not manifest_path.exists():
         return cfg, None
     try:

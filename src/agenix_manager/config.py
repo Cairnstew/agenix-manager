@@ -36,6 +36,7 @@ class NixConfig(BaseModel):
     model_config = {"populate_by_name": True}
     secrets_path: str = Field(alias="secretsPath")
     secrets_nix_path: str | None = Field(alias="secretsNixPath", default=None)
+    manifest_path: str | None = Field(alias="manifestPath", default=None)
     identities: list[str]
     keys: KeyGroups
     secrets: list[SecretDef]
