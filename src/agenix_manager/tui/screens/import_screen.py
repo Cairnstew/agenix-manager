@@ -4,39 +4,77 @@ from pathlib import Path
 from typing import Any
 
 from textual.app import ComposeResult
+from textual.binding import Binding
+from textual.containers import VerticalScroll
+from textual.screen import ModalScreen
 from textual.widgets import Label, Static
 
-from ..base import ConfirmModalScreen
 
+class ImportSelectScreen(ModalScreen[list[Path] | None]):
+    """Shows untracked .age files with toggles for selective import.
 
-class ImportConfirmScreen(ConfirmModalScreen):
-    """Shows a list of untracked .age files and asks y/n to import."""
+    Dismisses with:
+      - ``list[Path]`` — user confirmed with at least one file selected
+      - ``None`` — user cancelled
+    """
+
+    BINDINGS = [
+        Binding("space", "toggle", "Toggle"),
+        Binding("enter", "confirm", "Import Selected"),
+        Binding("escape", "cancel", "Cancel"),
+    ]
 
     def __init__(self, untracked: list[Path], **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.untracked = untracked
+        self._selected: set[int] = set(range(len(untracked)))
 
     def compose(self) -> ComposeResult:
-        yield Label("[bold]Import untracked secrets?[/]", id="import-title")
-        yield Static(self._file_list(), id="import-files")
+        yield Label("[bold]Select untracked secrets to import:[/]", id="import-title")
+        with VerticalScroll(id="import-list-container"):
+            for i, f in enumerate(self.untracked):
+                checked = "x" if i in self._selected else " "
+                yield Static(
+                    f"[{checked}]  {f.name}",
+                    id=f"import-item-{i}",
+                )
         yield Label(
-            "[dim]y[/] import  [dim]n[/] / [dim]esc[/] cancel",
+            "[dim]space[/] toggle    "
+            "[dim]enter[/] import selected    "
+            "[dim]esc[/] cancel",
             id="import-hint",
         )
 
-    def _file_list(self) -> str:
-        lines = [f"Found {len(self.untracked)} untracked .age file(s):", ""]
-        for f in self.untracked:
-            lines.append(f"  [bold]{f.name}[/]")
-        return "\n".join(lines)
-
     def on_mount(self) -> None:
-        title = self.query_one("#import-title", Label)
-        title.styles.padding = (1, 2)
-        files = self.query_one("#import-files", Static)
-        files.styles.padding = (1, 2)
-        files.styles.border = ("solid", "grey")
-        files.styles.max_height = "80%"
+        self.query_one("#import-title", Label).styles.padding = (1, 2)
+        container = self.query_one("#import-list-container", VerticalScroll)
+        container.styles.padding = (1, 2)
+        container.styles.border = ("solid", "grey")
+        container.styles.max_height = "80%"
         hint = self.query_one("#import-hint", Label)
         hint.styles.padding = (1, 2)
         hint.styles.text_align = "center"
+
+    def _get_selected_files(self) -> list[Path]:
+        return [self.untracked[i] for i in sorted(self._selected)]
+
+    def action_toggle(self) -> None:
+        focused = self.focused
+        if focused is None or not focused.id or not focused.id.startswith("import-item-"):
+            return
+        idx = int(focused.id.rsplit("-", 1)[-1])
+        if idx in self._selected:
+            self._selected.remove(idx)
+        else:
+            self._selected.add(idx)
+        focused.update(f"[{'x' if idx in self._selected else ' '}]  {self.untracked[idx].name}")
+
+    def action_confirm(self) -> None:
+        selected = self._get_selected_files()
+        if not selected:
+            self.notify("No files selected", severity="warning")
+            return
+        self.dismiss(selected)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)

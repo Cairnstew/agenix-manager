@@ -22,7 +22,7 @@ from ..ops.rekey import rekey_secrets
 from ..secrets_nix import write_secrets_nix
 from .screens.confirm import GenericConfirmScreen
 from .screens.decrypt_view import DecryptViewScreen
-from .screens.import_screen import ImportConfirmScreen
+from .screens.import_screen import ImportSelectScreen
 from .screens.rekey_confirm import RekeyConfirmScreen
 
 T = TypeVar("T")
@@ -231,18 +231,18 @@ class ImportAction(ActionHandler):
             self.screen._notify_ok("No untracked .age files found")
             return
         self._pending_untracked = untracked
-        confirm_screen = ImportConfirmScreen(untracked=untracked)
-        self.screen.app.push_screen(confirm_screen, self._on_confirmed)
+        select_screen = ImportSelectScreen(untracked=untracked)
+        self.screen.app.push_screen(select_screen, self._on_selected)
 
-    def _on_confirmed(self, confirmed: bool | None) -> None:
-        if not confirmed:
+    def _on_selected(self, selected: list[Path] | None) -> None:
+        if not selected:
             self.screen._notify_ok("Import cancelled")
             return
 
         def _do_import() -> bool:
             manifest_path = find_manifest_path(self.cfg.secrets_path, self.cfg.manifest_path)
             manifest = load_manifest(manifest_path)
-            for path in self._pending_untracked:
+            for path in selected:
                 try:
                     manifest = add_secret(
                         manifest, name=path.stem, scope=self._scope
@@ -260,6 +260,6 @@ class ImportAction(ActionHandler):
         if self._run_guarded(_do_import, "Import failed") is None:
             return
         self.screen._notify_ok(
-            f"Imported {len(self._pending_untracked)} secret(s)"
+            f"Imported {len(selected)} secret(s)"
         )
         self.refresh()
